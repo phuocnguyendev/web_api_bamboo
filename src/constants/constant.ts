@@ -1,0 +1,5 @@
+export const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+export const DATE_TIME_FORMAT_WITH_MILLISECONDS = 'YYYY-MM-DD HH:mm:ss.SSS';
+export const DATE_FORMAT_DDMMYYYY = 'DD/MM/YYYY';
+export const DATE_FORMAT_MMDDYYYY = 'MM/DD/YYYY';
+export const DATE_FORMAT_YYYYMMDD = 'YYYY-MM-DD';

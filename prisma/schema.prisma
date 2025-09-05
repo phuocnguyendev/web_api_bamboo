@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  Id         String   @id @default(uuid())
+  Name       String
+  Email      String   @unique
+  Phone      String?
+  Password   String @db.VarChar(255) 
+  Role       Role     @relation(fields: [RoleId], references: [Id])
+  RoleId     String
+  Status     Boolean  @default(true)
+  Avatar_url String?  @db.Text
+  CreatedAt  DateTime @default(now())
+  UpdatedAt  DateTime @updatedAt
+}
+
+model Role {
+  Id               String            @id @default(uuid())
+  Code             String            @unique
+  Name             String
+  Users            User[]
+  // Quan hệ M-N qua bảng nối
+  RolePermissions  RolePermission[]
+}
+
+model Permission {
+  Id               String            @id @default(uuid())
+  Code             String            @unique
+  Name             String
+  // Quan hệ M-N qua bảng nối
+  RolePermissions  RolePermission[]
+}
+
+model RolePermission {
+  // Bảng nối cho Role <-> Permission (M-N)
+  RoleId       String
+  PermissionId String
+
+  Role        Role        @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
+  Permission  Permission  @relation(fields: [PermissionId], references: [Id], onDelete: Cascade)
+
+  @@id([RoleId, PermissionId])
+  @@index([PermissionId])
+}
+
+model Product {
+  Id         String   @id @default(uuid())
+  Code       String   @unique
+  Name       String
+  Material   String?
+  SpecText   String?
+  Uom        String
+  BaseCost   Float?
+  Status     Boolean  @default(true)
+  Note       String?
+  CreatedAt  DateTime @default(now())
+  UpdatedAt  DateTime @updatedAt
+
+  // Đầu kia của các quan hệ
+  Stocks            Stock[]
+  StockMovements    StockMovement[]
+  ReceiptItems      ReceiptItem[]
+  StockOutItems     StockOutItem[]
+}
+
+model Warehouse {
+  Id        String   @id @default(uuid())
+  Code      String   @unique
+  Name      String
+  Address   String?
+  Branch    String?
+
+  Stocks    Stock[]
+
+  // Phiếu xuất kho (đã có)
+  StockOutFrom StockOutVoucher[] @relation("StockOut_FromWarehouse")
+  StockOutTo   StockOutVoucher[] @relation("StockOut_ToWarehouse")
+
+  // Đầu kia của StockMovement (từ kho / đến kho)
+  MovementsFrom StockMovement[] @relation("StockMovementWarehouse")
+  MovementsTo   StockMovement[] @relation("StockMovementWarehouseTo")
+
+  // Đầu kia của Receipt (nhập vào kho nào)
+  Receipts       Receipt[]
+}
+
+model Supplier {
+  Id         String   @id @default(uuid())
+  Name       String
+  TaxCode    String?
+  Phone      String?
+  Email      String?
+  Address    String?
+  Rating     Int?
+  LeadTime   Int?
+  CreatedAt  DateTime @default(now())
+  UpdatedAt  DateTime @updatedAt
+
+  // Đầu kia của Receipt
+  Receipts   Receipt[]
+}
+
+model Stock {
+  Id           String     @id @default(uuid())
+  Warehouse    Warehouse  @relation(fields: [WarehouseId], references: [Id])
+  WarehouseId  String
+  Product      Product    @relation(fields: [ProductId], references: [Id])
+  ProductId    String
+  QtyOnHand    Int        @default(0)
+  MinQty       Int        @default(0)
+
+  @@unique([WarehouseId, ProductId]) // Mỗi sản phẩm chỉ có 1 dòng tồn trong 1 kho
+  @@index([ProductId])
+}
+
+model StockMovement {
+  Id             String      @id @default(uuid())
+  Type           String
+  RefType        String?
+  RefId          String?
+
+  // Kho xuất (bắt buộc)
+  Warehouse      Warehouse   @relation("StockMovementWarehouse", fields: [WarehouseId], references: [Id])
+  WarehouseId    String
+
+  // Kho nhập (có thể null nếu xuất ra ngoài)
+  WarehouseTo    Warehouse?  @relation("StockMovementWarehouseTo", fields: [WarehouseToId], references: [Id])
+  WarehouseToId  String?
+
+  Product        Product     @relation(fields: [ProductId], references: [Id])
+  ProductId      String
+
+  Qty            Int
+  UnitCost       Float
+  Reason         String?
+  OccurredAt     DateTime
+  CreatedBy      String
+  CreatedAt      DateTime    @default(now())
+
+  @@index([WarehouseId])
+  @@index([WarehouseToId])
+  @@index([ProductId])
+}
+
+model Receipt {
+  Id           String     @id @default(uuid())
+  Code         String     @unique
+
+  Supplier     Supplier   @relation(fields: [SupplierId], references: [Id])
+  SupplierId   String
+
+  Warehouse    Warehouse  @relation(fields: [WarehouseId], references: [Id])
+  WarehouseId  String
+
+  Status       String
+  ReceivedAt   DateTime
+  FreightCost  Float?
+  HandlingCost Float?
+  OtherCost    Float?
+  Note         String?
+
+  Items        ReceiptItem[]
+
+  @@index([SupplierId])
+  @@index([WarehouseId])
+}
+
+model ReceiptItem {
+  Id         String    @id @default(uuid())
+  Receipt    Receipt   @relation(fields: [ReceiptId], references: [Id])
+  ReceiptId  String
+
+  Product    Product   @relation(fields: [ProductId], references: [Id])
+  ProductId  String
+
+  Qty        Int
+  UnitCost   Float
+  VatRate    Float?
+  Note       String?
+
+  @@index([ReceiptId])
+  @@index([ProductId])
+}
+
+model StockOutVoucher {
+  Id              String      @id @default(uuid())
+  Code            String      @unique
+
+  Warehouse       Warehouse   @relation("StockOut_FromWarehouse", fields: [WarehouseId], references: [Id])
+  WarehouseId     String
+
+  WarehouseTo     Warehouse?  @relation("StockOut_ToWarehouse", fields: [WarehouseToId], references: [Id])
+  WarehouseToId   String?
+
+  Type            String
+  Reason          String?
+  CostCenterId    String?
+  IssuedAt        DateTime
+  Status          String
+
+  Items           StockOutItem[]
+
+  @@index([WarehouseId])
+  @@index([WarehouseToId])
+}
+
+model StockOutItem {
+  Id                String           @id @default(uuid())
+  StockOutVoucher   StockOutVoucher  @relation(fields: [StockOutVoucherId], references: [Id])
+  StockOutVoucherId String
+
+  Product           Product          @relation(fields: [ProductId], references: [Id])
+  ProductId         String
+
+  Qty               Int
+  UnitCostSnapshot  Float
+  Note              String?
+
+  @@index([StockOutVoucherId])
+  @@index([ProductId])
+}
