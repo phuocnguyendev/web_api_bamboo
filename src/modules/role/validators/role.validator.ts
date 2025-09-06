@@ -6,18 +6,14 @@ import { RoleData } from 'src/interfaces';
 export class RoleValidator {
   constructor(private readonly roleRepository: RoleRepository) {}
 
-  async validateRoleName(
-    Name: string,
-    Code: string,
-    excludeId?: string,
-  ): Promise<void> {
-    if (!Name || !Code) return;
+  async validateRoleName(Code: string, excludeId?: string): Promise<void> {
+    if (!Code) return;
 
-    const role = await this.roleRepository.findByName(Name);
+    const role = await this.roleRepository.findByCode(Code);
 
     if (role && role.Id !== excludeId) {
       throw new HttpException(
-        `Role với tên ${Name} đã tồn tại`,
+        `Role với mã ${Code} đã tồn tại`,
         HttpStatus.CONFLICT,
       );
     }

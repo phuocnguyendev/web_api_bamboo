@@ -5,7 +5,10 @@ import {
   PermissionResponse,
   PermissionUpdateData,
   RolePermissionWithPermission,
+  PermissionData,
 } from './interfaces/permission.interface';
+import { BaseResponse } from 'src/common/dto/base-response.dto';
+import { IPermissionResponse } from './dto/IPermissionResponse';
 @Injectable()
 export class PermissionRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -13,7 +16,6 @@ export class PermissionRepository {
   async create(data: PermissionCreateData): Promise<PermissionResponse> {
     return this.prisma.permission.create({
       data,
-      skipDuplicates: true,
     }) as Promise<PermissionResponse>;
   }
 
@@ -38,12 +40,14 @@ export class PermissionRepository {
     }) as Promise<PermissionResponse | null>;
   }
 
-  async findAll(): Promise<PermissionResponse[]> {
-    return this.prisma.permission.findMany({
+  async findAll(): Promise<IPermissionResponse> {
+    const data = await this.prisma.permission.findMany({
       orderBy: {
-        created_at: 'desc',
+        Name: 'asc',
       },
-    }) as Promise<PermissionResponse[]>;
+    });
+    const count = await this.prisma.permission.count();
+    return new BaseResponse(data, count);
   }
 
   async findByRoleId(roleId: string): Promise<PermissionResponse[]> {
@@ -84,7 +88,6 @@ export class PermissionRepository {
     });
   }
 
-  // Thêm phương thức gán nhiều permission cho một role
   async assignPermissions(roleId: string, permissionIds: string[]) {
     const data = permissionIds.map((pid) => ({
       RoleId: roleId,
@@ -93,15 +96,13 @@ export class PermissionRepository {
     return this.prisma.rolePermission.createMany({ data });
   }
 
-  async getRolePermissions(roleId: string): Promise<Permissions[]> {
+  async getRolePermissions(roleId: string): Promise<PermissionResponse[]> {
     const rolePermissions = await this.prisma.rolePermission.findMany({
       where: { RoleId: roleId },
       include: { Permission: true },
     });
-
-    const typedRolePermissions =
-      rolePermissions as RolePermissionWithPermission[];
-    return typedRolePermissions.map((rp) => rp.Permission);
+    // Trả về mảng permission chuẩn
+    return rolePermissions.map((rp) => rp.Permission);
   }
 
   async clearRolePermissions(roleId: string) {

@@ -1,8 +1,20 @@
 import { UserData } from '../../user/interfaces/user.interface';
 import { RoleResponse } from '../../role/interfaces/role.interface';
 
-export interface AuthUser extends Pick<UserData, 'user_id' | 'email' | 'username' | 'role_id' | 'center_id'> {
-  role?: RoleResponse;
+export interface AuthUser
+  extends Pick<
+    UserData,
+    | 'Id'
+    | 'Email'
+    | 'Name'
+    | 'RoleId'
+    | 'Status'
+    | 'Phone'
+    | 'Avatar_url'
+    | 'CreatedAt'
+    | 'UpdatedAt'
+  > {
+  Role?: RoleResponse;
 }
 
 export interface JwtPayload {

@@ -6,6 +6,7 @@ import { PrismaService } from 'src/config/prisma/prisma.service';
 import { AuthResponseDto } from './dto/authResponse.dto';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { AuthUser, JwtPayload } from './interfaces/auth.interface';
+import { queryRole } from '../role/repositories';
 
 @Injectable()
 export class AuthService {
@@ -15,13 +16,41 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
+  private readonly AUTH_USER_SELECT = {
+    Id: true,
+    Email: true,
+    Name: true,
+    RoleId: true,
+    Status: true,
+    Phone: true,
+    Avatar_url: true,
+    CreatedAt: true,
+    UpdatedAt: true,
+    Password: true,
+    Role: { select: queryRole },
+  } as const;
+
+  private mapToAuthUser(user: any): AuthUser {
+    return {
+      Id: user.Id,
+      Email: user.Email,
+      Name: user.Name,
+      RoleId: user.RoleId,
+      Status: user.Status,
+      Phone: user.Phone,
+      Avatar_url: user.Avatar_url,
+      CreatedAt: user.CreatedAt,
+      UpdatedAt: user.UpdatedAt,
+      Role: user.Role,
+    };
+  }
+
   private createAccessToken(user: AuthUser): string {
     const payload: JwtPayload = {
-      sub: user.user_id,
-      role: user.role?.role_name,
-      iss: 'dipstick',
+      sub: user.Id,
+      role: user.Role?.Name,
+      iss: 'bamboo_hat_ms',
     };
-
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_ACCESS_TOKEN_KEY'),
       expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRE'),
@@ -30,97 +59,62 @@ export class AuthService {
 
   private createRefreshToken(user: AuthUser): string {
     const payload: JwtPayload = {
-      sub: user.user_id,
-      role: user.role?.role_name,
-      iss: 'dipstick',
+      sub: user.Id,
+      role: user.Role?.Name,
+      iss: 'bamboo_hat_ms',
     };
-
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_REFRESH_TOKEN_KEY'),
       expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRE'),
     });
   }
 
-  async login(createAuthDto: CreateAuthDto): Promise<AuthResponseDto> {
-    const { email, password } = createAuthDto;
+  private createTokens(user: AuthUser): AuthResponseDto {
+    return {
+      accessToken: this.createAccessToken(user),
+      refreshToken: this.createRefreshToken(user),
+    };
+  }
 
+  async login({ Email, Password }: CreateAuthDto): Promise<AuthResponseDto> {
     const user = await this.prisma.user.findUnique({
-      where: { email },
-      include: {
-        role: {
-          select: {
-            role_id: true,
-            role_name: true,
-          },
-        },
-      },
+      where: { Email },
+      select: this.AUTH_USER_SELECT,
     });
 
     if (!user) {
       throw new HttpException('Người dùng không tồn tại', HttpStatus.NOT_FOUND);
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
+    if (!user.Password || !(await bcrypt.compare(Password, user.Password))) {
       throw new HttpException('Mật khẩu không đúng', HttpStatus.UNAUTHORIZED);
     }
 
-    // Convert to AuthUser type
-    const authUser: AuthUser = {
-      user_id: user.user_id,
-      email: user.email,
-      username: user.username,
-      role_id: user.role_id,
-      center_id: user.center_id,
-      role: user.role,
-    };
-
-    const accessToken = this.createAccessToken(authUser);
-    const refreshToken = this.createRefreshToken(authUser);
-
-    return { accessToken, refreshToken };
+    const authUser = this.mapToAuthUser(user);
+    return this.createTokens(authUser);
   }
 
   async refresh(refreshToken: string): Promise<AuthResponseDto> {
     try {
-      const payload: JwtPayload = this.jwtService.verify(refreshToken, {
+      const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_TOKEN_KEY'),
       });
 
       const user = await this.prisma.user.findUnique({
-        where: { user_id: payload.sub },
-        include: {
-          role: {
-            select: {
-              role_id: true,
-              role_name: true,
-            },
-          },
-        },
+        where: { Id: payload.sub },
+        select: this.AUTH_USER_SELECT,
       });
 
       if (!user) {
         throw new HttpException(
-          'Refresh token không hợp lệ',
+          'Không tìm thấy người dùng',
           HttpStatus.UNAUTHORIZED,
         );
       }
 
-      // Convert to AuthUser type
-      const authUser: AuthUser = {
-        user_id: user.user_id,
-        email: user.email,
-        username: user.username,
-        role_id: user.role_id,
-        center_id: user.center_id,
-        role: user.role,
-      };
-
-      return {
-        accessToken: this.createAccessToken(authUser),
-        refreshToken: this.createRefreshToken(authUser),
-      };
-    } catch (error) {
+      const authUser = this.mapToAuthUser(user);
+      return this.createTokens(authUser);
+    } catch {
       throw new HttpException(
         'Refresh token không hợp lệ',
         HttpStatus.UNAUTHORIZED,
@@ -128,38 +122,22 @@ export class AuthService {
     }
   }
 
-  async validateUser(email: string, password: string): Promise<AuthUser | null> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<AuthUser | null> {
     try {
       const user = await this.prisma.user.findUnique({
-        where: { email },
-        include: {
-          role: {
-            select: {
-              role_id: true,
-              role_name: true,
-            },
-          },
-        },
+        where: { Email: email },
+        select: this.AUTH_USER_SELECT,
       });
+      if (!user || !user.Password) return null;
 
-      if (!user || !user.password) {
-        return null;
-      }
+      const ok = await bcrypt.compare(password, user.Password);
+      if (!ok) return null;
 
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return null;
-      }
-
-      return {
-        user_id: user.user_id,
-        email: user.email,
-        username: user.username,
-        role_id: user.role_id,
-        center_id: user.center_id,
-        role: user.role,
-      };
-    } catch (error) {
+      return this.mapToAuthUser(user);
+    } catch {
       return null;
     }
   }

@@ -1,18 +1,16 @@
 import {
-  BadRequestException,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
-import { CreatePermissionDto, UpdatePermissionDto } from './dto';
+import { CreatePermissionDto } from './dto/create-permission.dto';
 import {
-  PermissionCheck,
   PermissionCreateData,
   PermissionResponse,
-  PermissionType,
   PermissionUpdateData,
-  ResourceType,
 } from './interfaces/permission.interface';
 import { PermissionRepository } from './permission.repository';
+import { IPermissionResponse } from './dto/IPermissionResponse';
 
 @Injectable()
 export class PermissionService {
@@ -28,138 +26,67 @@ export class PermissionService {
     return permission;
   }
 
-  async findAll(): Promise<PermissionResponse[]> {
+  async findAll(): Promise<IPermissionResponse> {
     return this.permissionRepository.findAll();
   }
 
-  async findByRoleId(role_id: string): Promise<PermissionResponse[]> {
-    return this.permissionRepository.findByRoleId(role_id);
-  }
-
-  async findByRoleAndResource(
-    role_id: string,
-    resource_type: string,
-  ): Promise<PermissionResponse[]> {
-    return this.permissionRepository.findByRoleAndResource(
-      role_id,
-      resource_type,
-    );
+  async findByRoleId(roleId: string): Promise<PermissionResponse[]> {
+    return this.permissionRepository.findByRoleId(roleId);
   }
 
   async create(createData: CreatePermissionDto): Promise<PermissionResponse> {
-    // Validate permission_type and resource_type
-    if (
-      !Object.values(PermissionType).includes(
-        createData.permission_type as PermissionType,
-      )
-    ) {
+    const existed = await this.permissionRepository.findByCode(createData.Code);
+    if (existed) {
       throw new BadRequestException(
-        `Invalid permission type: ${createData.permission_type}`,
+        `Permission code đã tồn tại với mã: ${createData.Code}`,
       );
     }
-
-    if (
-      !Object.values(ResourceType).includes(
-        createData.resource_type as ResourceType,
-      )
-    ) {
-      throw new BadRequestException(
-        `Invalid resource type: ${createData.resource_type}`,
-      );
-    }
-
-    // Check if permission already exists
-    const exists = await this.permissionRepository.exists(
-      createData.role_id,
-      createData.permission_type,
-      createData.resource_type,
-    );
-
-    if (exists) {
-      throw new BadRequestException(
-        `Permission already exists for role ${createData.role_id}, ` +
-          `permission ${createData.permission_type}, resource ${createData.resource_type}`,
-      );
-    }
-
     const permissionData: PermissionCreateData = {
-      role_id: createData.role_id,
-      permission_type: createData.permission_type,
-      resource_type: createData.resource_type,
+      Code: createData.Code,
+      Name: createData.Name,
     };
-
     return this.permissionRepository.create(permissionData);
   }
 
   async update(
     permission_id: string,
-    updateData: UpdatePermissionDto,
+    updateData: Partial<PermissionUpdateData>,
   ): Promise<PermissionResponse> {
     const existing = await this.permissionRepository.findById(permission_id);
     if (!existing) {
       throw new NotFoundException(
-        `Permission with ID ${permission_id} not found`,
+        `Permission với ID ${permission_id} không tồn tại`,
       );
     }
-
-    // Validate permission_type and resource_type if provided
-    if (
-      updateData.permission_type &&
-      !Object.values(PermissionType).includes(
-        updateData.permission_type as PermissionType,
-      )
-    ) {
-      throw new BadRequestException(
-        `Invalid permission type: ${updateData.permission_type}`,
+    if (updateData.Code && updateData.Code !== existing.Code) {
+      const existed = await this.permissionRepository.findByCode(
+        updateData.Code,
       );
-    }
-
-    if (
-      updateData.resource_type &&
-      !Object.values(ResourceType).includes(
-        updateData.resource_type as ResourceType,
-      )
-    ) {
-      throw new BadRequestException(
-        `Invalid resource type: ${updateData.resource_type}`,
-      );
-    }
-
-    // Check for conflicts if updating key fields
-    if (
-      updateData.role_id ||
-      updateData.permission_type ||
-      updateData.resource_type
-    ) {
-      const role_id = updateData.role_id || existing.role_id;
-      const permission_type =
-        updateData.permission_type || existing.permission_type;
-      const resource_type = updateData.resource_type || existing.resource_type;
-
-      const conflicting = await this.permissionRepository.exists(
-        role_id,
-        permission_type,
-        resource_type,
-      );
-
-      if (conflicting) {
+      if (existed) {
         throw new BadRequestException(
-          `Permission already exists for role ${role_id}, ` +
-            `permission ${permission_type}, resource ${resource_type}`,
+          `Permission code đã tồn tại với mã: ${updateData.Code}`,
         );
       }
     }
 
-    const permissionUpdateData: PermissionUpdateData = {
-      role_id: updateData.role_id,
-      permission_type: updateData.permission_type,
-      resource_type: updateData.resource_type,
-    };
-
-    return this.permissionRepository.update(
-      permission_id,
-      permissionUpdateData,
-    );
+    if (updateData.Code !== undefined && updateData.Name !== undefined) {
+      return this.permissionRepository.update(permission_id, {
+        Code: updateData.Code,
+        Name: updateData.Name,
+      });
+    } else if (updateData.Code !== undefined) {
+      return this.permissionRepository.update(permission_id, {
+        Code: updateData.Code,
+        Name: existing.Name,
+      });
+    } else if (updateData.Name !== undefined) {
+      return this.permissionRepository.update(permission_id, {
+        Code: existing.Code,
+        Name: updateData.Name,
+      });
+    } else {
+      return existing;
+    }
   }
 
   async delete(permission_id: string): Promise<void> {
@@ -169,90 +96,33 @@ export class PermissionService {
         `Permission with ID ${permission_id} not found`,
       );
     }
-
     await this.permissionRepository.delete(permission_id);
   }
 
-  async deleteByRoleId(role_id: string): Promise<void> {
-    await this.permissionRepository.deleteByRoleId(role_id);
+  async deleteByRoleId(roleId: string): Promise<void> {
+    await this.permissionRepository.clearRolePermissions(roleId);
   }
 
-  // Permission checking methods
-  async checkPermission(check: PermissionCheck): Promise<boolean> {
-    return this.permissionRepository.checkPermission(check);
+  async addPermissionToRole(roleId: string, permissionId: string) {
+    return this.permissionRepository.addPermissionToRole(roleId, permissionId);
   }
 
-  async hasPermission(
-    role_id: string,
-    permission_type: string,
-    resource_type: string,
-  ): Promise<boolean> {
-    return this.permissionRepository.checkPermission({
-      role_id,
-      permission_type,
-      resource_type,
-    });
-  }
-
-  // Bulk operations
-  async createBulkPermissions(
-    role_id: string,
-    permissions: Array<{ permission_type: string; resource_type: string }>,
-  ): Promise<PermissionResponse[]> {
-    const results: PermissionResponse[] = [];
-
-    for (const perm of permissions) {
-      try {
-        const createData: CreatePermissionDto = {
-          role_id,
-          permission_type: perm.permission_type,
-          resource_type: perm.resource_type,
-        };
-        const created = await this.create(createData);
-        results.push(created);
-      } catch (error) {
-        // Continue if permission already exists
-        if (
-          error instanceof BadRequestException &&
-          error.message.includes('already exists')
-        ) {
-          continue;
-        }
-        throw error;
-      }
-    }
-
-    return results;
-  }
-
-  // Set full permissions for a role on a resource
-  async setFullPermissions(
-    role_id: string,
-    resource_type: string,
-  ): Promise<PermissionResponse[]> {
-    const fullPermissions = Object.values(PermissionType).map(
-      (permission_type) => ({
-        permission_type: permission_type as string,
-        resource_type,
-      }),
+  async removePermissionFromRole(roleId: string, permissionId: string) {
+    return this.permissionRepository.removePermissionFromRole(
+      roleId,
+      permissionId,
     );
-
-    return this.createBulkPermissions(role_id, fullPermissions);
   }
 
-  // Get permissions grouped by resource
-  async getPermissionsByResource(): Promise<
-    Record<string, PermissionResponse[]>
-  > {
-    return this.permissionRepository.getPermissionsByResource();
+  async assignPermissions(roleId: string, permissionIds: string[]) {
+    return this.permissionRepository.assignPermissions(roleId, permissionIds);
   }
 
-  // Utility methods
-  getAvailablePermissionTypes(): string[] {
-    return Object.values(PermissionType);
+  async getRolePermissions(roleId: string) {
+    return this.permissionRepository.getRolePermissions(roleId);
   }
 
-  getAvailableResourceTypes(): string[] {
-    return Object.values(ResourceType);
+  async clearRolePermissions(roleId: string) {
+    return this.permissionRepository.clearRolePermissions(roleId);
   }
 }

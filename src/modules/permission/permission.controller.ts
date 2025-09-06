@@ -3,337 +3,129 @@ import {
   Controller,
   Delete,
   Get,
-  HttpStatus,
   Param,
   Patch,
   Post,
-  Query,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiParam,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { BaseResponse } from '../../common/dto/base-response.dto';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreatePermissionDto, UpdatePermissionDto } from './dto';
-import { PermissionResponse } from './interfaces/permission.interface';
 import { PermissionService } from './permission.service';
+import { ResponseMessage } from 'src/core';
+import { SUCCESS } from 'src/constants';
+import {
+  PermissionResponse,
+  PermissionData,
+} from './interfaces/permission.interface';
+import { BaseResponse } from 'src/common/dto/base-response.dto';
 
 @ApiTags('Permission')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('permissions')
+@Controller()
 export class PermissionController {
   constructor(private readonly permissionService: PermissionService) {}
 
-  @Post()
-  @ApiOperation({ summary: 'Create a new permission' })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Permission created successfully',
-    type: BaseResponse<PermissionResponse>,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input or permission already exists',
-  })
-  async create(@Body() createPermissionDto: CreatePermissionDto) {
-    try {
-      const permission =
-        await this.permissionService.create(createPermissionDto);
-      return {
-        statusCode: HttpStatus.CREATED,
-        message: 'Permission created successfully',
-        data: permission,
-      };
-    } catch (error) {
-      throw error;
-    }
+  @Post('permissions')
+  @ApiOperation({ summary: 'Create a permission' })
+  @ResponseMessage(SUCCESS)
+  async create(
+    @Body() createPermissionDto: CreatePermissionDto,
+  ): Promise<PermissionResponse> {
+    return this.permissionService.create(createPermissionDto);
   }
 
-  @Get()
+  @Get('permissions')
   @ApiOperation({ summary: 'Get all permissions' })
-  @ApiQuery({
-    name: 'role_id',
-    required: false,
-    description: 'Filter permissions by role ID',
-  })
-  @ApiQuery({
-    name: 'resource_type',
-    required: false,
-    description: 'Filter permissions by resource type',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Permissions retrieved successfully',
-    type: BaseResponse<PermissionResponse[]>,
-  })
-  async findAll(
-    @Query('role_id') role_id?: string,
-    @Query('resource_type') resource_type?: string,
-  ) {
-    try {
-      let permissions: PermissionResponse[];
-
-      if (role_id && resource_type) {
-        permissions = await this.permissionService.findByRoleAndResource(
-          role_id,
-          resource_type,
-        );
-      } else if (role_id) {
-        permissions = await this.permissionService.findByRoleId(role_id);
-      } else {
-        permissions = await this.permissionService.findAll();
-      }
-
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Permissions retrieved successfully',
-        data: permissions,
-      };
-    } catch (error) {
-      throw error;
-    }
+  @ResponseMessage(SUCCESS)
+  async findAll(): Promise<BaseResponse<PermissionData>> {
+    return this.permissionService.findAll();
   }
 
-  @Get('by-resource')
-  @ApiOperation({ summary: 'Get permissions grouped by resource type' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Permissions grouped by resource retrieved successfully',
-  })
-  async getPermissionsByResource() {
-    try {
-      const permissions =
-        await this.permissionService.getPermissionsByResource();
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Permissions grouped by resource retrieved successfully',
-        data: permissions,
-      };
-    } catch (error) {
-      throw error;
-    }
+  @Get('permissions/:id')
+  @ApiOperation({ summary: 'Get a permission by ID' })
+  @ResponseMessage(SUCCESS)
+  async findOne(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<PermissionResponse> {
+    return this.permissionService.findById(id);
   }
 
-  @Get('types')
-  @ApiOperation({ summary: 'Get available permission and resource types' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Available types retrieved successfully',
-  })
-  async getAvailableTypes() {
-    try {
-      const data = {
-        permission_types: this.permissionService.getAvailablePermissionTypes(),
-        resource_types: this.permissionService.getAvailableResourceTypes(),
-      };
-
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Available types retrieved successfully',
-        data,
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get permission by ID' })
-  @ApiParam({ name: 'id', description: 'Permission ID' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Permission retrieved successfully',
-    type: BaseResponse<PermissionResponse>,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Permission not found',
-  })
-  async findOne(@Param('id') id: string) {
-    try {
-      const permission = await this.permissionService.findById(id);
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Permission retrieved successfully',
-        data: permission,
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update permission by ID' })
-  @ApiParam({ name: 'id', description: 'Permission ID' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Permission updated successfully',
-    type: BaseResponse<PermissionResponse>,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Permission not found',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input or permission conflict',
-  })
+  @Patch('permissions/:id')
+  @ApiOperation({ summary: 'Update a permission by ID' })
+  @ResponseMessage(SUCCESS)
   async update(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updatePermissionDto: UpdatePermissionDto,
-  ) {
-    try {
-      const permission = await this.permissionService.update(
-        id,
-        updatePermissionDto,
-      );
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Permission updated successfully',
-        data: permission,
-      };
-    } catch (error) {
-      throw error;
-    }
+  ): Promise<PermissionResponse> {
+    return this.permissionService.update(id, updatePermissionDto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete permission by ID' })
-  @ApiParam({ name: 'id', description: 'Permission ID' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Permission deleted successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Permission not found',
-  })
-  async remove(@Param('id') id: string) {
-    try {
-      await this.permissionService.delete(id);
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Permission deleted successfully',
-        data: null,
-      };
-    } catch (error) {
-      throw error;
-    }
+  @Delete('permissions/:id')
+  @ApiOperation({ summary: 'Delete a permission by ID' })
+  @ResponseMessage(SUCCESS)
+  async remove(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<{ deleted: true }> {
+    await this.permissionService.delete(id);
+    return { deleted: true };
   }
 
-  @Delete('role/:role_id')
-  @ApiOperation({ summary: 'Delete all permissions for a role' })
-  @ApiParam({ name: 'role_id', description: 'Role ID' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'All permissions for role deleted successfully',
-  })
-  async removeByRoleId(@Param('role_id') role_id: string) {
-    try {
-      await this.permissionService.deleteByRoleId(role_id);
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'All permissions for role deleted successfully',
-        data: null,
-      };
-    } catch (error) {
-      throw error;
-    }
+  @Get('permissions/by-role/:roleId')
+  @ApiOperation({ summary: 'Get permissions by roleId (legacy endpoint)' })
+  @ResponseMessage(SUCCESS)
+  async findByRoleId(
+    @Param('roleId', new ParseUUIDPipe()) roleId: string,
+  ): Promise<PermissionResponse[]> {
+    return this.permissionService.findByRoleId(roleId);
   }
 
-  @Post('check')
-  @ApiOperation({ summary: 'Check if a role has specific permission' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Permission check completed',
+  @Post('roles/:roleId/permissions')
+  @ApiOperation({
+    summary:
+      'Assign a set of permissions to a role (overwrite or upsert by service logic)',
   })
-  async checkPermission(
-    @Body()
-    checkData: {
-      role_id: string;
-      permission_type: string;
-      resource_type: string;
-    },
-  ) {
-    try {
-      const hasPermission = await this.permissionService.hasPermission(
-        checkData.role_id,
-        checkData.permission_type,
-        checkData.resource_type,
-      );
-
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Permission check completed',
-        data: { has_permission: hasPermission },
-      };
-    } catch (error) {
-      throw error;
-    }
+  @ResponseMessage(SUCCESS)
+  async assignPermissions(
+    @Param('roleId', new ParseUUIDPipe()) roleId: string,
+    @Body() body: { permissionIds: string[] },
+  ): Promise<{ assigned: true; count: number }> {
+    const { permissionIds } = body;
+    await this.permissionService.assignPermissions(roleId, permissionIds);
+    return { assigned: true, count: permissionIds?.length ?? 0 };
   }
 
-  @Post('bulk')
-  @ApiOperation({ summary: 'Create multiple permissions for a role' })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Bulk permissions created successfully',
-  })
-  async createBulkPermissions(
-    @Body()
-    bulkData: {
-      role_id: string;
-      permissions: Array<{ permission_type: string; resource_type: string }>;
-    },
-  ) {
-    try {
-      const permissions = await this.permissionService.createBulkPermissions(
-        bulkData.role_id,
-        bulkData.permissions,
-      );
-
-      return {
-        statusCode: HttpStatus.CREATED,
-        message: 'Bulk permissions created successfully',
-        data: permissions,
-      };
-    } catch (error) {
-      throw error;
-    }
+  @Post('roles/:roleId/permissions/:permissionId')
+  @ApiOperation({ summary: 'Add a permission to a role' })
+  @ResponseMessage(SUCCESS)
+  async addPermissionToRole(
+    @Param('roleId', new ParseUUIDPipe()) roleId: string,
+    @Param('permissionId', new ParseUUIDPipe()) permissionId: string,
+  ): Promise<{ added: true }> {
+    await this.permissionService.addPermissionToRole(roleId, permissionId);
+    return { added: true };
   }
 
-  @Post('full-access')
-  @ApiOperation({ summary: 'Grant full permissions for a role on a resource' })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Full permissions granted successfully',
-  })
-  async setFullPermissions(
-    @Body()
-    fullAccessData: {
-      role_id: string;
-      resource_type: string;
-    },
-  ) {
-    try {
-      const permissions = await this.permissionService.setFullPermissions(
-        fullAccessData.role_id,
-        fullAccessData.resource_type,
-      );
+  @Delete('roles/:roleId/permissions/:permissionId')
+  @ApiOperation({ summary: 'Remove a permission from a role' })
+  @ResponseMessage(SUCCESS)
+  async removePermissionFromRole(
+    @Param('roleId', new ParseUUIDPipe()) roleId: string,
+    @Param('permissionId', new ParseUUIDPipe()) permissionId: string,
+  ): Promise<{ removed: true }> {
+    await this.permissionService.removePermissionFromRole(roleId, permissionId);
+    return { removed: true };
+  }
 
-      return {
-        statusCode: HttpStatus.CREATED,
-        message: 'Full permissions granted successfully',
-        data: permissions,
-      };
-    } catch (error) {
-      throw error;
-    }
+  @Delete('roles/:roleId/permissions')
+  @ApiOperation({ summary: 'Clear all permissions from a role' })
+  @ResponseMessage(SUCCESS)
+  async clearRolePermissions(
+    @Param('roleId', new ParseUUIDPipe()) roleId: string,
+  ): Promise<{ cleared: true }> {
+    await this.permissionService.clearRolePermissions(roleId);
+    return { cleared: true };
   }
 }

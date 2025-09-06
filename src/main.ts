@@ -19,7 +19,7 @@ async function bootstrap() {
   const port =
     process.env.NODE_ENV === 'production'
       ? parseInt(process.env.PORT || '3000', 10)
-      : (configService.get<number>('PORT') ?? 5176);
+      : (configService.get<number>('PORT') ?? 8000);
 
   app.use(cookieParser());
   app.useGlobalInterceptors(new TransformInterceptor(reflector));

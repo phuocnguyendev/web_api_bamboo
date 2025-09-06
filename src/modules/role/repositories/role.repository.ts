@@ -15,9 +15,9 @@ export class RoleRepository extends BaseRepository<RoleData, any> {
     super(prisma, prisma.role);
   }
 
-  async findByName(Name: string): Promise<RoleData | null> {
+  async findByCode(Code: string): Promise<RoleData | null> {
     return this.model.findUnique({
-      where: { Name },
+      where: { Code },
       select: queryRole,
     });
   }

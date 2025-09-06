@@ -23,6 +23,12 @@ export interface UserResponse
     'Id' | 'Name' | 'Email' | 'Avatar_url' | 'Status' | 'Phone'
   > {}
 
+export interface UserResponseWithRole
+  extends Pick<
+    UserData,
+    'Id' | 'Name' | 'Email' | 'Avatar_url' | 'Status' | 'Phone' | 'RoleId'
+  > {}
+
 export interface UserCreateData
   extends Pick<
     UserData,

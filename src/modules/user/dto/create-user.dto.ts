@@ -53,13 +53,13 @@ export class CreateUserDto {
 
   @ApiProperty({
     description: 'The phone number of the user',
-    required: false,
   })
+  @IsOptional()
   Phone?: string;
 
   @ApiProperty({
     description: 'The status of the user (active/inactive)',
-    example: true,
   })
+  @IsOptional()
   Status: boolean;
 }

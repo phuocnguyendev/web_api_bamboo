@@ -7,7 +7,7 @@ export class UniqueUserValidator {
   constructor(private readonly userRepository: UserRepository) {}
 
   async validate(
-    field: 'Email' | 'Name',
+    field: 'Email',
     value: string,
     excludeId?: string,
   ): Promise<void> {
@@ -17,13 +17,11 @@ export class UniqueUserValidator {
 
     if (field === 'Email') {
       user = await this.userRepository.findByEmail(value);
-    } else if (field === 'Name') {
-      user = await this.userRepository.findByUsername(value);
     }
 
     if (user && user.Id !== excludeId) {
       throw new HttpException(
-        `${field === 'Email' ? 'Email' : 'Name'} ${value} đã tồn tại`,
+        `${field === 'Email'} ${value} đã tồn tại`,
         HttpStatus.CONFLICT,
       );
     }

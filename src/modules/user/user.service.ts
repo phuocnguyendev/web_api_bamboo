@@ -5,11 +5,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import {
   UserCreateData,
+  UserData,
   UserResponse,
+  UserResponseWithRole,
   UserWithRole,
 } from './interfaces/user.interface';
 import { UserRepository } from './repositories';
 import { UniqueUserValidator } from './validators';
+import { IUserResponse } from './dto';
 
 @Injectable()
 export class UserService {
@@ -20,7 +23,6 @@ export class UserService {
 
   async create(createUserDto: CreateUserDto): Promise<UserResponse> {
     await this.uniqueValidator.validate('Email', createUserDto.Email);
-    await this.uniqueValidator.validate('Name', createUserDto.Name);
 
     const hashedPassword = await bcrypt.hash(createUserDto.Password, 10);
 
@@ -41,8 +43,6 @@ export class UserService {
 
     if (data.Email && data.Email !== user.Email)
       await this.uniqueValidator.validate('Email', data.Email, id);
-    if (data.Name && data.Name !== user.Name)
-      await this.uniqueValidator.validate('Name', data.Name, id);
 
     const updatedUser = await this.userRepository.update({
       where: { Id: id },
@@ -52,7 +52,7 @@ export class UserService {
     return this.uniqueValidator.toUserResponse(updatedUser);
   }
 
-  async findOne(id: string): Promise<UserResponse> {
+  async findOne(id: string): Promise<UserResponseWithRole> {
     const user = await this.userRepository.findUserById(id);
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
@@ -64,14 +64,14 @@ export class UserService {
     page = 1,
     pageSize = 30,
     searchText = '',
-  ): Promise<BaseResponse<UserResponse>> {
+  ): Promise<IUserResponse> {
     const [data, count] = await this.userRepository.findAllUsers(
       page,
       pageSize,
       searchText,
     );
 
-    return new BaseResponse<UserResponse>(data, count);
+    return new IUserResponse(data, count);
   }
 
   async remove(id: string): Promise<UserResponse> {
