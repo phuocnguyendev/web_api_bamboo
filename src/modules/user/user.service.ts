@@ -1,11 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { BaseResponse } from 'src/common/dto/base-response.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import {
   UserCreateData,
-  UserData,
   UserResponse,
   UserResponseWithRole,
   UserWithRole,

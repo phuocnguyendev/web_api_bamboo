@@ -4,8 +4,6 @@ import {
   PermissionCreateData,
   PermissionResponse,
   PermissionUpdateData,
-  RolePermissionWithPermission,
-  PermissionData,
 } from './interfaces/permission.interface';
 import { BaseResponse } from 'src/common/dto/base-response.dto';
 import { IPermissionResponse } from './dto/IPermissionResponse';
