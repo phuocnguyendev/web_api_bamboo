@@ -7,12 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/**
+ * ——— User/Role/Permission giữ nguyên ———
+ */
+
 model User {
   Id         String   @id @default(uuid())
   Name       String
   Email      String   @unique
   Phone      String?
-  Password   String @db.VarChar(255) 
+  Password   String   @db.VarChar(255)
   Role       Role     @relation(fields: [RoleId], references: [Id])
   RoleId     String
   Status     Boolean  @default(true)
@@ -22,53 +26,90 @@ model User {
 }
 
 model Role {
-  Id               String            @id @default(uuid())
-  Code             String            @unique
-  Name             String
-  Users            User[]
-  // Quan hệ M-N qua bảng nối
-  RolePermissions  RolePermission[]
+  Id              String           @id @default(uuid())
+  Code            String           @unique
+  Name            String
+  Users           User[]
+  RolePermissions RolePermission[]
 }
 
 model Permission {
-  Id               String            @id @default(uuid())
-  Code             String            @unique
-  Name             String
-  // Quan hệ M-N qua bảng nối
-  RolePermissions  RolePermission[]
+  Id              String           @id @default(uuid())
+  Code            String           @unique
+  Name            String
+  RolePermissions RolePermission[]
 }
 
 model RolePermission {
-  // Bảng nối cho Role <-> Permission (M-N)
   RoleId       String
   PermissionId String
 
-  Role        Role        @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
-  Permission  Permission  @relation(fields: [PermissionId], references: [Id], onDelete: Cascade)
+  Role       Role       @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
+  Permission Permission @relation(fields: [PermissionId], references: [Id], onDelete: Cascade)
 
   @@id([RoleId, PermissionId])
   @@index([PermissionId])
 }
 
-model Product {
-  Id         String   @id @default(uuid())
-  Code       String   @unique
-  Name       String
-  Material   String?
-  SpecText   String?
-  Uom        String
-  BaseCost   Float?
-  Status     Boolean  @default(true)
-  Note       String?
-  CreatedAt  DateTime @default(now())
-  UpdatedAt  DateTime @updatedAt
+/**
+ * ——— Product mạnh hơn, có ảnh & thông tin logistics ———
+ */
 
-  // Đầu kia của các quan hệ
-  Stocks            Stock[]
-  StockMovements    StockMovement[]
-  ReceiptItems      ReceiptItem[]
-  StockOutItems     StockOutItem[]
+model Product {
+  Id       String   @id @default(uuid())
+  Code     String  @unique
+  Sku      String?  @unique
+  Name     String
+  Material String?
+  SpecText String?
+  Uom      String  // đơn vị cái kg g
+  BaseCost Decimal? @db.Decimal(18, 2) // đổi Float -> Decimal
+  Status   Boolean  @default(true)
+  Note     String?
+
+  // Ảnh & mô tả hiển thị
+  ImageUrl String? @db.Text
+
+  // Thông tin vận chuyển/xuất khẩu (tùy dùng)
+  Barcode         String? @unique
+  HSCode          String?
+  CountryOfOrigin String?
+
+  // Kích thước/khối lượng (đơn vị gợi ý)
+  WeightKg Decimal? @db.Decimal(10, 3)
+  LengthCm Decimal? @db.Decimal(10, 2)
+  WidthCm  Decimal? @db.Decimal(10, 2)
+  HeightCm Decimal? @db.Decimal(10, 2)
+
+  // Optimistic locking (tùy chọn)
+  Version Int @default(1)
+
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @updatedAt
+
+  // Relationship
+  Stocks         Stock[]
+  StockMovements StockMovement[]
+  ReceiptItems   ReceiptItem[]
+  StockOutItems  StockOutItem[]
+  Images         ProductImage[]
 }
+
+model ProductImage {
+  Id        String  @id @default(uuid())
+  Product   Product @relation(fields: [ProductId], references: [Id], onDelete: Cascade)
+  ProductId String
+  Url       String  @db.Text
+  AltText   String?
+  IsPrimary Boolean @default(false)
+  SortOrder Int     @default(0)
+
+  @@index([ProductId])
+}
+
+/**
+ * ——— Warehouse có trạng thái & audit ———
+ */
 
 model Warehouse {
   Id        String   @id @default(uuid())
@@ -76,73 +117,83 @@ model Warehouse {
   Name      String
   Address   String?
   Branch    String?
+  Status    Boolean  @default(true)
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @updatedAt
 
-  Stocks    Stock[]
-
-  // Phiếu xuất kho (đã có)
-  StockOutFrom StockOutVoucher[] @relation("StockOut_FromWarehouse")
-  StockOutTo   StockOutVoucher[] @relation("StockOut_ToWarehouse")
-
-  // Đầu kia của StockMovement (từ kho / đến kho)
-  MovementsFrom StockMovement[] @relation("StockMovementWarehouse")
-  MovementsTo   StockMovement[] @relation("StockMovementWarehouseTo")
-
-  // Đầu kia của Receipt (nhập vào kho nào)
-  Receipts       Receipt[]
+  Stocks        Stock[]
+  StockOutFrom  StockOutVoucher[] @relation("StockOut_FromWarehouse")
+  StockOutTo    StockOutVoucher[] @relation("StockOut_ToWarehouse")
+  MovementsFrom StockMovement[]   @relation("StockMovementWarehouse")
+  MovementsTo   StockMovement[]   @relation("StockMovementWarehouseTo")
+  Receipts      Receipt[]
 }
+
+/**
+ * ——— Supplier giữ nguyên ———
+ */
 
 model Supplier {
-  Id         String   @id @default(uuid())
-  Name       String
-  TaxCode    String?
-  Phone      String?
-  Email      String?
-  Address    String?
-  Rating     Int?
-  LeadTime   Int?
-  CreatedAt  DateTime @default(now())
-  UpdatedAt  DateTime @updatedAt
+  Id        String   @id @default(uuid())
+  Name      String
+  TaxCode   String?
+  Phone     String?
+  Email     String?
+  Address   String?
+  Rating    Int?
+  LeadTime  Int?
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @updatedAt
 
-  // Đầu kia của Receipt
-  Receipts   Receipt[]
+  Receipts Receipt[]
 }
 
-model Stock {
-  Id           String     @id @default(uuid())
-  Warehouse    Warehouse  @relation(fields: [WarehouseId], references: [Id])
-  WarehouseId  String
-  Product      Product    @relation(fields: [ProductId], references: [Id])
-  ProductId    String
-  QtyOnHand    Int        @default(0)
-  MinQty       Int        @default(0)
+/**
+ * ——— Stock thêm Safety/Reorder/Reserved ———
+ */
 
-  @@unique([WarehouseId, ProductId]) // Mỗi sản phẩm chỉ có 1 dòng tồn trong 1 kho
+model Stock {
+  Id          String    @id @default(uuid())
+  Warehouse   Warehouse @relation(fields: [WarehouseId], references: [Id])
+  WarehouseId String
+  Product     Product   @relation(fields: [ProductId], references: [Id])
+  ProductId   String
+
+  QtyOnHand    Int @default(0)
+  QtyReserved  Int @default(0) // giữ chỗ cho đơn hàng
+  SafetyStock  Int @default(0)
+  ReorderPoint Int @default(0)
+  MinQty       Int @default(0)
+
+  @@unique([WarehouseId, ProductId])
   @@index([ProductId])
 }
 
+/**
+ * ——— Movement & chứng từ chuyển sang Decimal cho tiền ———
+ */
+
 model StockMovement {
-  Id             String      @id @default(uuid())
-  Type           String
-  RefType        String?
-  RefId          String?
+  Id      String  @id @default(uuid())
+  Type    String
+  RefType String?
+  RefId   String?
 
-  // Kho xuất (bắt buộc)
-  Warehouse      Warehouse   @relation("StockMovementWarehouse", fields: [WarehouseId], references: [Id])
-  WarehouseId    String
+  Warehouse   Warehouse @relation("StockMovementWarehouse", fields: [WarehouseId], references: [Id])
+  WarehouseId String
 
-  // Kho nhập (có thể null nếu xuất ra ngoài)
-  WarehouseTo    Warehouse?  @relation("StockMovementWarehouseTo", fields: [WarehouseToId], references: [Id])
-  WarehouseToId  String?
+  WarehouseTo   Warehouse? @relation("StockMovementWarehouseTo", fields: [WarehouseToId], references: [Id])
+  WarehouseToId String?
 
-  Product        Product     @relation(fields: [ProductId], references: [Id])
-  ProductId      String
+  Product   Product @relation(fields: [ProductId], references: [Id])
+  ProductId String
 
-  Qty            Int
-  UnitCost       Float
-  Reason         String?
-  OccurredAt     DateTime
-  CreatedBy      String
-  CreatedAt      DateTime    @default(now())
+  Qty        Int
+  UnitCost   Decimal? @db.Decimal(18, 2) // đổi Float -> Decimal
+  Reason     String?
+  OccurredAt DateTime
+  CreatedBy  String
+  CreatedAt  DateTime @default(now())
 
   @@index([WarehouseId])
   @@index([WarehouseToId])
@@ -150,78 +201,78 @@ model StockMovement {
 }
 
 model Receipt {
-  Id           String     @id @default(uuid())
-  Code         String     @unique
+  Id   String @id @default(uuid())
+  Code String @unique
 
-  Supplier     Supplier   @relation(fields: [SupplierId], references: [Id])
-  SupplierId   String
+  Supplier   Supplier @relation(fields: [SupplierId], references: [Id])
+  SupplierId String
 
-  Warehouse    Warehouse  @relation(fields: [WarehouseId], references: [Id])
-  WarehouseId  String
+  Warehouse   Warehouse @relation(fields: [WarehouseId], references: [Id])
+  WarehouseId String
 
   Status       String
   ReceivedAt   DateTime
-  FreightCost  Float?
-  HandlingCost Float?
-  OtherCost    Float?
+  FreightCost  Decimal? @db.Decimal(18, 2)
+  HandlingCost Decimal? @db.Decimal(18, 2)
+  OtherCost    Decimal? @db.Decimal(18, 2)
   Note         String?
 
-  Items        ReceiptItem[]
+  Items ReceiptItem[]
 
   @@index([SupplierId])
   @@index([WarehouseId])
 }
 
 model ReceiptItem {
-  Id         String    @id @default(uuid())
-  Receipt    Receipt   @relation(fields: [ReceiptId], references: [Id])
-  ReceiptId  String
+  Id        String  @id @default(uuid())
+  Receipt   Receipt @relation(fields: [ReceiptId], references: [Id])
+  ReceiptId String
 
-  Product    Product   @relation(fields: [ProductId], references: [Id])
-  ProductId  String
+  Product   Product @relation(fields: [ProductId], references: [Id])
+  ProductId String
 
-  Qty        Int
-  UnitCost   Float
-  VatRate    Float?
-  Note       String?
+  Qty      Int
+  UnitCost Decimal  @db.Decimal(18, 2) // bắt buộc
+  VatRate  Decimal? @db.Decimal(5, 2)
+  Note     String?
 
   @@index([ReceiptId])
   @@index([ProductId])
 }
 
 model StockOutVoucher {
-  Id              String      @id @default(uuid())
-  Code            String      @unique
+  Id   String @id @default(uuid())
+  Code String @unique
 
-  Warehouse       Warehouse   @relation("StockOut_FromWarehouse", fields: [WarehouseId], references: [Id])
-  WarehouseId     String
+  Warehouse   Warehouse @relation("StockOut_FromWarehouse", fields: [WarehouseId], references: [Id])
+  WarehouseId String
 
-  WarehouseTo     Warehouse?  @relation("StockOut_ToWarehouse", fields: [WarehouseToId], references: [Id])
-  WarehouseToId   String?
+  WarehouseTo   Warehouse? @relation("StockOut_ToWarehouse", fields: [WarehouseToId], references: [Id])
+  WarehouseToId String?
 
-  Type            String
-  Reason          String?
-  CostCenterId    String?
-  IssuedAt        DateTime
-  Status          String
+  Type         String
+  Reason       String?
+  CostCenterId String?
+  IssuedAt     DateTime
+  Status       String
 
-  Items           StockOutItem[]
+  Items StockOutItem[]
 
   @@index([WarehouseId])
   @@index([WarehouseToId])
 }
 
 model StockOutItem {
-  Id                String           @id @default(uuid())
-  StockOutVoucher   StockOutVoucher  @relation(fields: [StockOutVoucherId], references: [Id])
+  Id                String          @id @default(uuid())
+  StockOutVoucher   StockOutVoucher @relation(fields: [StockOutVoucherId], references: [Id])
   StockOutVoucherId String
 
-  Product           Product          @relation(fields: [ProductId], references: [Id])
-  ProductId         String
+  Product   Product @relation(fields: [ProductId], references: [Id])
+  ProductId String
 
-  Qty               Int
-  UnitCostSnapshot  Float
-  Note              String?
+  Qty              Int
+  UnitCostSnapshot Decimal @db.Decimal(18, 2)
+  Note             String?
 
   @@index([StockOutVoucherId])
   @@index([ProductId])

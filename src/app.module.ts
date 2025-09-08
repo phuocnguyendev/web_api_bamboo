@@ -10,6 +10,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RoleModule } from './modules/role/role.module';
 import { UserModule } from './modules/user/user.module';
 import { PermissionModule } from './modules/permission/permission.module';
+import { ProductModule } from './modules/product/product.module';
+import { SupplierModule } from './modules/supplier/supplier.module';
+import { WarehouseModule } from './modules/warehouse/warehouse.module';
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { PermissionModule } from './modules/permission/permission.module';
     ConfigModule,
     ElasticsearchModule,
     PermissionModule,
+    ProductModule,
+    SupplierModule,
+    WarehouseModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
