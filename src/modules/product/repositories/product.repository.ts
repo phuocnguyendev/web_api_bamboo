@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/config/prisma/prisma.service';
-import { Product, ProductResponse } from '../interfaces/product.interface';
+import { BaseRepository } from 'src/repository/baseRepository';
+import { CreateProductDto } from '../dto';
 import {
   mapPrismaProductToDomain,
   mapProductDecimalFieldsToNumber,
 } from '../helpers/product.mapper';
-import { CreateProductDto } from '../dto';
-import { BaseRepository } from 'src/repository/baseRepository';
+import { Product, ProductResponse } from '../interfaces/product.interface';
 
 @Injectable()
 export class ProductRepository extends BaseRepository<Product, any> {
@@ -69,6 +69,16 @@ export class ProductRepository extends BaseRepository<Product, any> {
           BaseCost: true,
           Status: true,
           Note: true,
+          Barcode: true,
+          HSCode: true,
+          CountryOfOrigin: true,
+          WeightKg: true,
+          LengthCm: true,
+          WidthCm: true,
+          HeightCm: true,
+          Version: true,
+          ImageUrl: true,
+          Sku: true,
           CreatedAt: true,
           UpdatedAt: true,
         },

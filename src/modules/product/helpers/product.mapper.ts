@@ -1,5 +1,4 @@
 import { Product } from '../interfaces/product.interface';
-import { decimalToString } from 'src/utils/prisma.types';
 
 export function mapProductDecimalFieldsToNumber<
   T extends { [key: string]: any },
@@ -22,16 +21,21 @@ export const mapPrismaProductToDomain = (p: any): Product => ({
   Material: p.Material ?? null,
   SpecText: p.SpecText ?? null,
   Uom: p.Uom,
-  BaseCost: decimalToString(p.BaseCost) ?? null,
+  BaseCost:
+    p.BaseCost !== null && p.BaseCost !== undefined ? Number(p.BaseCost) : null,
   Status: p.Status,
   Note: p.Note ?? null,
   Barcode: p.Barcode ?? null,
   HSCode: p.HSCode ?? null,
   CountryOfOrigin: p.CountryOfOrigin ?? null,
-  WeightKg: decimalToString(p.WeightKg) ?? null,
-  LengthCm: decimalToString(p.LengthCm) ?? null,
-  WidthCm: decimalToString(p.WidthCm) ?? null,
-  HeightCm: decimalToString(p.HeightCm) ?? null,
+  WeightKg:
+    p.WeightKg !== null && p.WeightKg !== undefined ? Number(p.WeightKg) : null,
+  LengthCm:
+    p.LengthCm !== null && p.LengthCm !== undefined ? Number(p.LengthCm) : null,
+  WidthCm:
+    p.WidthCm !== null && p.WidthCm !== undefined ? Number(p.WidthCm) : null,
+  HeightCm:
+    p.HeightCm !== null && p.HeightCm !== undefined ? Number(p.HeightCm) : null,
   Version: p.Version,
   ImageUrl: p.ImageUrl ?? null,
   CreatedAt: p.CreatedAt,

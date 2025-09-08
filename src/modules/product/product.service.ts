@@ -1,13 +1,13 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { CreateProductDto, UpdateProductDto } from './dto';
-import { ProductRepository } from './repositories/product.repository';
-import { ProductValidator } from './validators/product.validator';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import * as XLSX from 'xlsx';
+import { CreateProductDto } from './dto';
+import { IProductResponse } from './dto/response.dto';
 import {
   exportFullProductSampleExcelStyled,
   parseProductExcel,
 } from './helpers/product.excel';
-import * as XLSX from 'xlsx';
-import { IProductResponse } from './dto/response.dto';
+import { ProductRepository } from './repositories/product.repository';
+import { ProductValidator } from './validators/product.validator';
 
 @Injectable()
 export class ProductService {
@@ -34,16 +34,21 @@ export class ProductService {
       Material: row[3],
       SpecText: row[4],
       Uom: row[5],
-      BaseCost: row[6],
+      BaseCost:
+        row[6] !== undefined && row[6] !== '' ? Number(row[6]) : undefined,
       Status: row[7] === 'true',
       Note: row[8],
       Barcode: row[9],
       HSCode: row[10],
       CountryOfOrigin: row[11],
-      WeightKg: row[12],
-      LengthCm: row[13],
-      WidthCm: row[14],
-      HeightCm: row[15],
+      WeightKg:
+        row[12] !== undefined && row[12] !== '' ? Number(row[12]) : undefined,
+      LengthCm:
+        row[13] !== undefined && row[13] !== '' ? Number(row[13]) : undefined,
+      WidthCm:
+        row[14] !== undefined && row[14] !== '' ? Number(row[14]) : undefined,
+      HeightCm:
+        row[15] !== undefined && row[15] !== '' ? Number(row[15]) : undefined,
       ImageUrl: row[16],
     }));
 
@@ -66,8 +71,11 @@ export class ProductService {
               if (key === 'isNotEmpty') msg = 'Không được để trống';
               if (key === 'length') msg = 'Độ dài không hợp lệ';
               if (key === 'isBoolean') msg = 'Phải là true/false';
-              if (e.property === 'BaseCost' && key === 'isString')
-                msg = 'Giá vốn phải là chuỗi';
+              if (key === 'isNumber') msg = 'Phải là số';
+              if (key === 'isPositive') msg = 'Phải là số dương';
+              if (key === 'max') msg = `Tối đa ${e.constraints['max']} ký tự`;
+              if (key === 'min')
+                msg = `Tối thiểu ${e.constraints['min']} ký tự`;
               errorList.push({ Property: e.property, Message: msg });
             }
           }

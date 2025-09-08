@@ -1,5 +1,3 @@
-import { DecimalValue } from 'src/common/money';
-
 export interface Product {
   Id: string;
   Code: string;
@@ -8,16 +6,16 @@ export interface Product {
   Material?: string | null;
   SpecText?: string | null;
   Uom: string;
-  BaseCost?: DecimalValue | null;
+  BaseCost?: number | null;
   Status: boolean;
   Note?: string | null;
   Barcode?: string | null;
   HSCode?: string | null;
   CountryOfOrigin?: string | null;
-  WeightKg?: DecimalValue | null;
-  LengthCm?: DecimalValue | null;
-  WidthCm?: DecimalValue | null;
-  HeightCm?: DecimalValue | null;
+  WeightKg?: number | null;
+  LengthCm?: number | null;
+  WidthCm?: number | null;
+  HeightCm?: number | null;
   Version?: number;
   ImageUrl?: string | null;
   CreatedAt: Date;
