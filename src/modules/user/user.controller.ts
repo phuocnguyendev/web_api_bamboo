@@ -7,7 +7,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
@@ -27,14 +26,14 @@ export class UserController {
     private readonly permissionService: PermissionService,
   ) {}
 
-  @Post()
+  @Post('Create')
   @Public()
   @ResponseMessage(SUCCESS)
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
 
-  @Get()
+  @Get('GetAll')
   @ResponseMessage(SUCCESS)
   @ApiQuery({
     name: 'page',
@@ -59,19 +58,19 @@ export class UserController {
     return this.userService.findAll(Number(page), Number(pageSize), searchText);
   }
 
-  @Get(':id')
+  @Get('GetById/:id')
   @ResponseMessage(SUCCESS)
   findOne(@Param('id') id: string) {
     return this.userService.findOne(id);
   }
 
-  @Put(':id')
+  @Put('Update')
   @ResponseMessage(SUCCESS)
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(id, updateUserDto);
+  update(@Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(updateUserDto);
   }
 
-  @Delete(':id')
+  @Delete('Delete/:id')
   @ResponseMessage(SUCCESS)
   remove(@Param('id') id: string) {
     return this.userService.remove(id);

@@ -1,9 +1,9 @@
+// ...existing code...
 import {
   Controller,
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   UploadedFile,
@@ -11,8 +11,10 @@ import {
   Res,
   BadRequestException,
   Query,
+  Put,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
+import { exportInvalidStudentsExcel } from './helpers/product.excel';
 import { CreateProductDto, UpdateProductDto } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
@@ -22,11 +24,11 @@ import { ResponseMessage } from 'src/core';
 import { SUCCESS } from 'src/constants';
 
 @ApiTags('Product')
-@Controller('product')
+@Controller('Product')
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
-  @Post()
+  @Post('Create')
   @ResponseMessage(SUCCESS)
   async create(@Body() createProductDto: CreateProductDto) {
     return this.productService.create(createProductDto);
@@ -56,11 +58,27 @@ export class ProductController {
     return this.productService.importExcel(file.buffer);
   }
 
-  @Get('DownloadInvalidProduct')
+  @Post('InsertMany')
   @ResponseMessage(SUCCESS)
-  async downloadInvalidProduct(@Res() res: Response) {
+  @ApiBody({ type: [CreateProductDto] })
+  async insertMany(@Body() products: CreateProductDto[]) {
+    return this.productService.insertMany(products);
+  }
+
+  @Post('DownloadInvalidProduct')
+  @ApiBody({
+    schema: {
+      type: 'array',
+      items: { type: 'object' },
+    },
+  })
+  async downloadInvalidProduct(
+    @Body() invalidStudents: any[],
+    @Res() res: Response,
+  ) {
     const filePath = 'src/assets/files/InvalidProduct.xlsx';
-    res.download(filePath);
+    await exportInvalidStudentsExcel(invalidStudents, filePath);
+    return res.download(filePath);
   }
 
   @Get('DownloadTemplate')
@@ -71,7 +89,7 @@ export class ProductController {
     res.download(filePath);
   }
 
-  @Get()
+  @Get('GetAll')
   @ResponseMessage(SUCCESS)
   @ApiQuery({
     name: 'page',
@@ -100,18 +118,22 @@ export class ProductController {
     );
   }
 
-  // @Get(':id')
-  // async findOne(@Param('id') id: string) {
-  //   return this.productService.findOne(id);
-  // }
+  @Get('GetById/:id')
+  @ResponseMessage(SUCCESS)
+  async findOne(@Param('id') id: string) {
+    return this.productService.findOne(id);
+  }
 
-  // @Patch(':id')
-  // async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
-  //   return this.productService.update(id, dto);
-  // }
+  @Put('Update')
+  @ResponseMessage(SUCCESS)
+  @ApiBody({ type: UpdateProductDto })
+  async update(@Body() dto: UpdateProductDto) {
+    return this.productService.update(dto);
+  }
 
-  // @Delete(':id')
-  // async remove(@Param('id') id: string) {
-  //   return this.productService.remove(id);
-  // }
+  @Delete(':id')
+  @ResponseMessage(SUCCESS)
+  async remove(@Param('id') id: string) {
+    return this.productService.remove(id);
+  }
 }

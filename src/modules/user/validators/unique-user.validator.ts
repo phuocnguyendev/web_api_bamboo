@@ -36,15 +36,4 @@ export class UniqueUserValidator {
     }
     return user;
   }
-
-  toUserResponse(user: UserData): UserResponse {
-    return {
-      Id: user.Id,
-      Name: user.Name,
-      Email: user.Email,
-      Avatar_url: user.Avatar_url || null,
-      Status: user.Status,
-      Phone: user.Phone || null,
-    };
-  }
 }

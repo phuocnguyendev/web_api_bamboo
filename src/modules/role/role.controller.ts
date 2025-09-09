@@ -17,18 +17,18 @@ import { RoleResponse } from 'src/interfaces';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Role')
-@Controller('Role')
+@Controller('role')
 export class RoleController {
   constructor(private readonly rolesService: RoleService) {}
 
-  @Post()
+  @Post('Create')
   @Public()
   @ResponseMessage(SUCCESS)
   async create(@Body() createRoleDto: CreateRoleDto): Promise<RoleResponse> {
     return this.rolesService.create(createRoleDto);
   }
 
-  @Get()
+  @Get('GetAll')
   @Public()
   @ResponseMessage(SUCCESS)
   async findAll(): Promise<RoleResponse[]> {
@@ -41,15 +41,15 @@ export class RoleController {
     return this.rolesService.findOne(Id);
   }
 
-  @Put()
+  @Put('Update')
   @ResponseMessage(SUCCESS)
   async update(@Body() updateRoleDto: UpdateRoleDto): Promise<RoleResponse> {
     return this.rolesService.update(updateRoleDto);
   }
 
-  @Delete(':id')
+  @Delete('Delete/:id')
   @ResponseMessage(SUCCESS)
-  async remove(@Param('id') Id: string): Promise<void> {
+  async remove(@Param('id') Id: string) {
     return this.rolesService.remove(Id);
   }
 }

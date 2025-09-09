@@ -24,11 +24,11 @@ import { BaseResponse } from 'src/common/dto/base-response.dto';
 @ApiTags('Permission')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller()
+@Controller('Permission')
 export class PermissionController {
   constructor(private readonly permissionService: PermissionService) {}
 
-  @Post('permissions')
+  @Post('Create')
   @ApiOperation({ summary: 'Create a permission' })
   @ResponseMessage(SUCCESS)
   async create(
@@ -37,14 +37,14 @@ export class PermissionController {
     return this.permissionService.create(createPermissionDto);
   }
 
-  @Get('permissions')
+  @Get('GetAll')
   @ApiOperation({ summary: 'Get all permissions' })
   @ResponseMessage(SUCCESS)
   async findAll(): Promise<BaseResponse<PermissionData>> {
     return this.permissionService.findAll();
   }
 
-  @Get('permissions/:id')
+  @Get('GetById/:id')
   @ApiOperation({ summary: 'Get a permission by ID' })
   @ResponseMessage(SUCCESS)
   async findOne(
@@ -53,7 +53,7 @@ export class PermissionController {
     return this.permissionService.findById(id);
   }
 
-  @Patch('permissions/:id')
+  @Patch('Update/:id')
   @ApiOperation({ summary: 'Update a permission by ID' })
   @ResponseMessage(SUCCESS)
   async update(
@@ -63,7 +63,7 @@ export class PermissionController {
     return this.permissionService.update(id, updatePermissionDto);
   }
 
-  @Delete('permissions/:id')
+  @Delete('Delete/:id')
   @ApiOperation({ summary: 'Delete a permission by ID' })
   @ResponseMessage(SUCCESS)
   async remove(
@@ -73,7 +73,7 @@ export class PermissionController {
     return { deleted: true };
   }
 
-  @Get('permissions/by-role/:roleId')
+  @Get('GetPermissionsByRole/:roleId')
   @ApiOperation({ summary: 'Get permissions by roleId (legacy endpoint)' })
   @ResponseMessage(SUCCESS)
   async findByRoleId(

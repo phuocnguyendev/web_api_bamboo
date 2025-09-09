@@ -24,8 +24,9 @@ export class CreateProductDto {
     description: 'The SKU of the product',
     required: false,
     example: 'SKU001',
+    nullable: true,
   })
-  Sku?: string;
+  Sku?: string | null;
 
   @IsString()
   @IsNotEmpty()
@@ -80,8 +81,9 @@ export class CreateProductDto {
     description: 'The barcode of the product',
     required: false,
     example: '8938505974190',
+    nullable: true,
   })
-  Barcode?: string;
+  Barcode?: string | null;
 
   @IsString()
   @IsOptional()
@@ -89,8 +91,9 @@ export class CreateProductDto {
     description: 'The HS code of the product',
     required: false,
     example: '6504.00.00',
+    nullable: true,
   })
-  HSCode?: string;
+  HSCode?: string | null;
 
   @IsString()
   @IsOptional()
@@ -98,8 +101,9 @@ export class CreateProductDto {
     description: 'Country of origin',
     required: false,
     example: 'Vietnam',
+    nullable: true,
   })
-  CountryOfOrigin?: string;
+  CountryOfOrigin?: string | null;
 
   @IsOptional()
   @IsNumber({}, { message: 'Khối lượng phải là số' })
@@ -155,8 +159,9 @@ export class CreateProductDto {
     description: 'Image URL of the product',
     required: false,
     example: 'https://example.com/image.jpg',
+    nullable: true,
   })
-  ImageUrl?: string;
+  ImageUrl?: string | null;
   @IsBoolean()
   @IsOptional()
   @ApiProperty({
@@ -172,6 +177,7 @@ export class CreateProductDto {
     description: 'Any additional notes about the product',
     required: false,
     example: 'Hàng xuất sang Nhật',
+    nullable: true,
   })
-  Note?: string;
+  Note?: string | null;
 }

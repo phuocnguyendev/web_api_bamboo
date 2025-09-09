@@ -1,13 +1,17 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
-import { CreateProductDto } from './dto';
+import { CreateProductDto, UpdateProductDto } from './dto';
 import { IProductResponse } from './dto/response.dto';
 import {
   exportFullProductSampleExcelStyled,
   parseProductExcel,
 } from './helpers/product.excel';
 import { ProductRepository } from './repositories/product.repository';
-import { ProductValidator } from './validators/product.validator';
+import {
+  checkProductUniqueFields,
+  ProductValidator,
+  validateProductDto,
+} from './validators/product.validator';
 
 @Injectable()
 export class ProductService {
@@ -19,17 +23,19 @@ export class ProductService {
   async create(createProductDto: CreateProductDto) {
     const err = await this.productValidator.validateUnique(
       createProductDto.Code,
-      createProductDto.Name,
+      createProductDto.Sku!,
+      createProductDto.Barcode!,
+      createProductDto.HSCode!,
     );
     if (err) throw new BadRequestException(err);
     return this.productRepo.create(createProductDto);
   }
 
   async importExcel(buffer: Buffer) {
-    const { data, header } = parseProductExcel(buffer);
-    const rows: CreateProductDto[] = data.map((row) => ({
+    const { data } = parseProductExcel(buffer);
+    const rows: any[] = data.map((row) => ({
       Code: row[0],
-      Sku: row[1],
+      Sku: row[1] !== undefined && row[1] !== null ? String(row[1]) : undefined,
       Name: row[2],
       Material: row[3],
       SpecText: row[4],
@@ -38,8 +44,10 @@ export class ProductService {
         row[6] !== undefined && row[6] !== '' ? Number(row[6]) : undefined,
       Status: row[7] === 'true',
       Note: row[8],
-      Barcode: row[9],
-      HSCode: row[10],
+      Barcode:
+        row[9] !== undefined && row[9] !== null ? String(row[9]) : undefined,
+      HSCode:
+        row[10] !== undefined && row[10] !== null ? String(row[10]) : undefined,
       CountryOfOrigin: row[11],
       WeightKg:
         row[12] !== undefined && row[12] !== '' ? Number(row[12]) : undefined,
@@ -52,44 +60,24 @@ export class ProductService {
       ImageUrl: row[16],
     }));
 
+    return rows;
+  }
+
+  async insertMany(products: CreateProductDto[]) {
+    if (!Array.isArray(products) || products.length === 0) {
+      throw new BadRequestException('Danh sách sản phẩm trống');
+    }
     const validRows: CreateProductDto[] = [];
     const invalidRows: any[] = [];
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+    for (let i = 0; i < products.length; i++) {
+      const row = products[i];
       const dto = Object.assign(new CreateProductDto(), row);
-      const validationErrors = (await import('class-validator')).validateSync(
-        dto,
-        { whitelist: true },
+      let errorList = validateProductDto(dto);
+      const uniqueErrors = await checkProductUniqueFields(
+        row,
+        this.productRepo,
       );
-      const errorList: { Property: string; Message: string }[] = [];
-      if (validationErrors.length > 0) {
-        for (const e of validationErrors) {
-          if (e.constraints) {
-            for (const key in e.constraints) {
-              let msg = e.constraints[key];
-              if (key === 'isString') msg = 'Phải là chuỗi ký tự';
-              if (key === 'isNotEmpty') msg = 'Không được để trống';
-              if (key === 'length') msg = 'Độ dài không hợp lệ';
-              if (key === 'isBoolean') msg = 'Phải là true/false';
-              if (key === 'isNumber') msg = 'Phải là số';
-              if (key === 'isPositive') msg = 'Phải là số dương';
-              if (key === 'max') msg = `Tối đa ${e.constraints['max']} ký tự`;
-              if (key === 'min')
-                msg = `Tối thiểu ${e.constraints['min']} ký tự`;
-              errorList.push({ Property: e.property, Message: msg });
-            }
-          }
-        }
-      }
-      let uniqueErr: string | null = null;
-      try {
-        uniqueErr = await this.productValidator.validateUnique(
-          row.Code,
-          row.Name,
-        );
-      } catch (e: any) {
-        errorList.push({ Property: 'Code/Name', Message: e.message });
-      }
+      errorList = errorList.concat(uniqueErrors);
       if (errorList.length > 0) {
         invalidRows.push({ Errors: errorList, ...row });
       } else {
@@ -101,20 +89,9 @@ export class ProductService {
       await this.productRepo.bulkCreate(validRows);
       inserted = validRows.length;
     }
-    // Nếu có lỗi, ghi file lỗi
-    if (invalidRows.length > 0) {
-      const filePath = 'src/assets/files/InvalidProduct.xlsx';
-      const ws = XLSX.utils.aoa_to_sheet([
-        header,
-        ...invalidRows.map((r) => Object.values(r)),
-      ]);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'InvalidProducts');
-      XLSX.writeFile(wb, filePath);
-    }
     return {
       InsertedCount: inserted,
-      InvalidProducts: invalidRows,
+      InvalidStudents: invalidRows,
     };
   }
 
@@ -135,30 +112,51 @@ export class ProductService {
     );
     return new IProductResponse(data, count);
   }
-  // async findOne(id: string) {
-  //   const product = await this.productRepo.findOne(id);
-  //   if (!product) throw new BadRequestException('Product not found');
-  //   return product;
-  // }
-  // async update(id: string, dto: UpdateProductDto) {
-  //   const product = await this.productRepo.findOne(id);
-  //   if (!product) throw new BadRequestException('Product not found');
-  //   // Check unique nếu đổi code/name
-  //   if (
-  //     (dto.Code && dto.Code !== product.Code) ||
-  //     (dto.Name && dto.Name !== product.Name)
-  //   ) {
-  //     const err = await this.productValidator.validateUnique(
-  //       dto.Code ?? product.Code,
-  //       dto.Name ?? product.Name,
-  //     );
-  //     if (err) throw new BadRequestException(err);
-  //   }
-  //   return this.productRepo.update(id, dto);
-  // }
-  // async remove(id: string) {
-  //   const product = await this.productRepo.findOne(id);
-  //   if (!product) throw new BadRequestException('Product not found');
-  //   return this.productRepo.remove(id);
-  // }
+  async findOne(id: string) {
+    const product = await this.productRepo.findProductById(id);
+    if (!product) throw new BadRequestException('Product not found');
+    return product;
+  }
+  async update(updateDto: UpdateProductDto) {
+    const product = await this.productRepo.findProductById(updateDto.Id);
+    if (!product) throw new BadRequestException('Product not found');
+
+    const uniqueFields: (keyof UpdateProductDto)[] = [
+      'Code',
+      'Name',
+      'Sku',
+      'Barcode',
+      'HSCode',
+    ];
+
+    const needValidate = uniqueFields.some(
+      (field) => updateDto[field] && updateDto[field] !== product[field],
+    );
+
+    if (needValidate) {
+      const err = await this.productValidator.validateUnique(
+        updateDto.Code ?? product.Code,
+        updateDto.Sku ?? product.Sku!,
+        updateDto.Barcode ?? product.Barcode!,
+        updateDto.HSCode ?? product.HSCode!,
+      );
+      if (err) throw new BadRequestException(err);
+    }
+
+    const updated = await this.productRepo.update({
+      where: { Id: updateDto.Id },
+      data: updateDto,
+    });
+
+    return this.productRepo.updateProduct(updateDto.Id, updated);
+  }
+
+  async remove(id: string) {
+    const product = await this.productRepo.findProductById(id);
+    if (!product) throw new BadRequestException('Product not found');
+
+    await this.productRepo.delete({ where: { Id: id } });
+
+    return {};
+  }
 }

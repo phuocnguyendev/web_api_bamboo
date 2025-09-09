@@ -1,3 +1,111 @@
+/**
+ * Xuất file excel danh sách lỗi import students, bôi đỏ trường lỗi và thêm cột nội dung lỗi
+ * @param students Danh sách students lỗi (có trường Errors)
+ * @param filePath Đường dẫn file xuất
+ */
+import { Workbook } from 'exceljs';
+export async function exportInvalidStudentsExcel(
+  students: any[],
+  filePath: string,
+) {
+  const wb = new Workbook();
+  const ws = wb.addWorksheet('InvalidStudents', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  // Header mapping: key - title
+  const columns = [
+    { key: 'Code', title: 'Mã định danh *', width: 22 },
+    { key: 'Name', title: 'Họ và tên *', width: 22 },
+    { key: 'Birthday', title: 'Ngày sinh', width: 22 },
+    { key: 'Gender', title: 'Giới tính', width: 22 },
+    { key: 'Grade', title: 'Khối *', width: 22 },
+    { key: 'Class', title: 'Lớp *', width: 22 },
+    { key: 'BirthPlace', title: 'Nơi sinh', width: 22 },
+    { key: 'Address', title: 'Địa chỉ', width: 22 },
+    { key: 'PhoneNumber', title: 'Số điện thoại', width: 22 },
+    { key: 'Email', title: 'Email', width: 22 },
+    { key: 'Password', title: 'Mật khẩu', width: 22 },
+    { key: 'ErrorContent', title: 'Nội dung lỗi', width: 40 },
+  ];
+  ws.columns = columns.map((col) => ({ key: col.key, width: col.width }));
+
+  // Header row
+  const headerRow = ws.addRow(columns.map((c) => c.title));
+  headerRow.height = 24;
+  headerRow.eachCell((cell) => {
+    cell.font = { name: 'Calibri', size: 11, bold: true };
+    cell.alignment = {
+      vertical: 'middle',
+      horizontal: 'center',
+      wrapText: true,
+    };
+    cell.fill = {
+      type: 'pattern' as const,
+      pattern: 'solid' as const,
+      fgColor: { argb: 'FFFFF2CC' },
+    };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' },
+    };
+  });
+
+  // Red fill for error
+  const redFill = {
+    type: 'pattern' as const,
+    pattern: 'solid' as const,
+    fgColor: { argb: 'FFFF0000' },
+  };
+
+  for (const student of students) {
+    const rowData = columns.map((col) =>
+      col.key === 'ErrorContent' ? '' : (student[col.key] ?? ''),
+    );
+    // Nội dung lỗi: nối các message
+    const errorContent = Array.isArray(student.Errors)
+      ? student.Errors.map((e: any) => e.Message).join('; ')
+      : '';
+    rowData[columns.length - 1] = errorContent;
+    const row = ws.addRow(rowData);
+    row.height = 22;
+    // Bôi đỏ các trường có lỗi
+    if (Array.isArray(student.Errors)) {
+      for (const err of student.Errors) {
+        const idx = columns.findIndex((c) => c.key === err.Property);
+        if (idx >= 0) {
+          const cell = row.getCell(idx + 1);
+          cell.fill = redFill;
+        }
+      }
+      // Bôi đỏ cột nội dung lỗi
+      row.getCell(columns.length + 1).fill = redFill;
+    }
+    row.eachCell((cell) => {
+      cell.font = { name: 'Calibri', size: 11 };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'left',
+        wrapText: true,
+      };
+    });
+  }
+
+  ws.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: columns.length + 1 },
+  };
+
+  await wb.xlsx.writeFile(filePath);
+}
 import * as XLSX from 'xlsx';
 import * as ExcelJS from 'exceljs';
 

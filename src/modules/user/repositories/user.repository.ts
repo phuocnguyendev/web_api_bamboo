@@ -74,4 +74,14 @@ export class UserRepository extends BaseRepository<UserData, any> {
       },
     });
   }
+
+  async updateUser(
+    id: string,
+    data: Partial<UserData | undefined>,
+  ): Promise<UserResponse | null> {
+    return this.model.update({
+      where: { Id: id },
+      data,
+    });
+  }
 }

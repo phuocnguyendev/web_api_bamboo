@@ -52,9 +52,10 @@ export class RoleService {
     return role;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string) {
     await this.roleValidator.ensureRoleExists(id);
     await this.roleRepository.deleteRole(id);
+    return {};
   }
 
   async findByName(Name: string, Code: string): Promise<RoleData> {

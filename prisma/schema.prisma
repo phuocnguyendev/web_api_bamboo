@@ -76,10 +76,10 @@ model Product {
   CountryOfOrigin String?
 
   // Kích thước/khối lượng (đơn vị gợi ý)
-  WeightKg Decimal? @db.Decimal(10, 3)
-  LengthCm Decimal? @db.Decimal(10, 2)
-  WidthCm  Decimal? @db.Decimal(10, 2)
-  HeightCm Decimal? @db.Decimal(10, 2)
+  WeightKg     Float?  @db.DoublePrecision
+  LengthCm     Float?  @db.DoublePrecision
+  WidthCm      Float?  @db.DoublePrecision
+  HeightCm     Float?  @db.DoublePrecision
 
   // Optimistic locking (tùy chọn)
   Version Int @default(1)
