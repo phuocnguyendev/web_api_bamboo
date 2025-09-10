@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 /**
  * ——— User/Role/Permission giữ nguyên ———
  */
@@ -117,7 +118,7 @@ model Warehouse {
   Name      String
   Address   String?
   Branch    String?
-  Status    Boolean  @default(true)
+  Status    Int      @default(1) // 1=Active, 2=Inactive, 3=Maintenance, 4=PendingApproval
   CreatedAt DateTime @default(now())
   UpdatedAt DateTime @updatedAt
 

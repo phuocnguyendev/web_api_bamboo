@@ -1,5 +1,6 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { UserData, UserResponse } from '../interfaces/user.interface';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { ensureFieldUnique } from 'src/common/db.validator';
+import { UserData } from '../interfaces/user.interface';
 import { UserRepository } from '../repositories';
 
 @Injectable()
@@ -11,20 +12,13 @@ export class UniqueUserValidator {
     value: string,
     excludeId?: string,
   ): Promise<void> {
-    if (!value) return;
-
-    let user: UserData | null = null;
-
-    if (field === 'Email') {
-      user = await this.userRepository.findByEmail(value);
-    }
-
-    if (user && user.Id !== excludeId) {
-      throw new HttpException(
-        `${field === 'Email'} ${value} đã tồn tại`,
-        HttpStatus.CONFLICT,
-      );
-    }
+    await ensureFieldUnique(
+      this.userRepository,
+      field,
+      value,
+      'Email',
+      excludeId,
+    );
   }
 
   async ensureUserExists(id: string): Promise<UserData> {

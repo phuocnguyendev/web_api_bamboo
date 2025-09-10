@@ -44,7 +44,7 @@ export class ProductRepository extends BaseRepository<Product, any> {
     barcode?: string,
     hsCode?: string,
   ): Promise<Product | null> {
-    const result = await this.prisma.product.findFirst({
+    const result = await this.model.findFirst({
       where: {
         OR: [
           { Code: code },
@@ -60,7 +60,7 @@ export class ProductRepository extends BaseRepository<Product, any> {
   }
 
   async create(data: CreateProductDto): Promise<Product> {
-    const created = await this.prisma.product.create({
+    const created = await this.model.create({
       data: mapProductDecimalFieldsToNumber(data),
     });
     return mapPrismaProductToDomain(created);
@@ -69,7 +69,7 @@ export class ProductRepository extends BaseRepository<Product, any> {
   async bulkCreate(products: CreateProductDto[]): Promise<Product[]> {
     const createdProducts = await this.prisma.$transaction(
       products.map((p) =>
-        this.prisma.product.create({
+        this.model.create({
           data: mapProductDecimalFieldsToNumber(p),
         }),
       ),

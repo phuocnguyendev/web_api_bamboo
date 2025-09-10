@@ -15,7 +15,7 @@ export class RoleService {
   ) {}
 
   async create(createRoleDto: CreateRoleDto): Promise<RoleResponse> {
-    await this.roleValidator.validateRoleName(createRoleDto.Code);
+    await this.roleValidator.validateRoleName('Code', createRoleDto.Code);
 
     const role = await this.roleRepository.createRole({
       Name: createRoleDto.Name,
@@ -45,7 +45,7 @@ export class RoleService {
     }
 
     await this.roleValidator.ensureRoleExists(Id);
-    await this.roleValidator.validateRoleName(Id, Code);
+    await this.roleValidator.validateRoleName('Code', Code);
 
     const role = await this.roleRepository.updateRole(Id, { Name, Code });
 

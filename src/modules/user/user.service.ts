@@ -33,7 +33,13 @@ export class UserService {
       data: userData,
     });
 
-    return user;
+    const {
+      Password: _password,
+      RoleId,
+      ...userWithoutSensitive
+    } = user as any;
+
+    return userWithoutSensitive as UserResponse;
   }
 
   async update(data: UpdateUserDto): Promise<UserResponse> {
@@ -47,8 +53,8 @@ export class UserService {
     if (!updatedUser) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
-
-    return updatedUser;
+    const { Password: _password, ...userWithoutSensitive } = updatedUser as any;
+    return userWithoutSensitive as UserResponse;
   }
 
   async findOne(id: string): Promise<UserResponseWithRole> {

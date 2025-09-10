@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ensureFieldUnique } from 'src/common/db.validator';
 import { ProductRepository } from '../repositories/product.repository';
 import { CreateProductDto } from '../dto';
 import { validateSync } from 'class-validator';
@@ -45,7 +46,6 @@ export class ProductValidator {
     const errors: string[] = [];
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      // Validate giá trị từng trường
       const dto = Object.assign(new CreateProductDto(), row);
       const validationErrors = validateSync(dto, { whitelist: true });
       if (validationErrors.length > 0) {
@@ -55,7 +55,6 @@ export class ProductValidator {
         errors.push(`Dòng ${i + 2}: ${msg}`);
         continue;
       }
-      // Validate unique
       const err = await this.validateUnique(
         row.Code,
         row.Sku!,
@@ -110,17 +109,21 @@ export async function checkProductUniqueFields(row: any, productRepo: any) {
     { prop: 'HSCode', label: 'HSCode' },
   ];
   const errorList: { Property: string; Message: string }[] = [];
+  const currentId = row.Id;
   for (const field of checkFields) {
-    if (row[field.prop]) {
-      const where: any = {};
-      where[field.prop] = row[field.prop];
-      const exist = await productRepo['model'].findFirst({ where });
-      if (exist) {
-        errorList.push({
-          Property: field.prop,
-          Message: `${field.label} đã tồn tại trong hệ thống`,
-        });
-      }
+    try {
+      await ensureFieldUnique(
+        productRepo,
+        field.prop,
+        row[field.prop],
+        field.label,
+        currentId,
+      );
+    } catch (e: any) {
+      errorList.push({
+        Property: field.prop,
+        Message: e.message || `${field.label} đã tồn tại trong hệ thống`,
+      });
     }
   }
   return errorList;
