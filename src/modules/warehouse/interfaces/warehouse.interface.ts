@@ -4,6 +4,7 @@ export interface Warehouse {
   Name: string;
   Address?: string | null;
   Branch?: string | null;
+  Status?: boolean | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }

@@ -37,8 +37,8 @@ async function bootstrap() {
 
   // config swagger
   const config = new DocumentBuilder()
-    .setTitle('Ionic API')
-    .setDescription('API documentation for the Ionic')
+    .setTitle('bambooHat API')
+    .setDescription('API documentation for the bambooHat')
     .setVersion('1.0')
     .addBearerAuth()
     .addSecurityRequirements('bearer')

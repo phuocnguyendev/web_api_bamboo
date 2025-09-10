@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import * as XLSX from 'xlsx';
 import { CreateProductDto, UpdateProductDto } from './dto';
 import { IProductResponse } from './dto/response.dto';
 import {
@@ -33,55 +32,87 @@ export class ProductService {
 
   async importExcel(buffer: Buffer) {
     const { data } = parseProductExcel(buffer);
-    const rows: any[] = data.map((row) => ({
-      Code: row[0],
-      Sku: row[1] !== undefined && row[1] !== null ? String(row[1]) : undefined,
-      Name: row[2],
-      Material: row[3],
-      SpecText: row[4],
-      Uom: row[5],
-      BaseCost:
-        row[6] !== undefined && row[6] !== '' ? Number(row[6]) : undefined,
-      Status: row[7] === 'true',
-      Note: row[8],
-      Barcode:
-        row[9] !== undefined && row[9] !== null ? String(row[9]) : undefined,
-      HSCode:
-        row[10] !== undefined && row[10] !== null ? String(row[10]) : undefined,
-      CountryOfOrigin: row[11],
-      WeightKg:
-        row[12] !== undefined && row[12] !== '' ? Number(row[12]) : undefined,
-      LengthCm:
-        row[13] !== undefined && row[13] !== '' ? Number(row[13]) : undefined,
-      WidthCm:
-        row[14] !== undefined && row[14] !== '' ? Number(row[14]) : undefined,
-      HeightCm:
-        row[15] !== undefined && row[15] !== '' ? Number(row[15]) : undefined,
-      ImageUrl: row[16],
-    }));
-
-    return rows;
+    return {
+      Data: data,
+      ErrorDetail: {},
+    };
   }
 
-  async insertMany(products: CreateProductDto[]) {
-    if (!Array.isArray(products) || products.length === 0) {
+  async insertMany(items: any[][]) {
+    if (!Array.isArray(items) || items.length === 0) {
       throw new BadRequestException('Danh sách sản phẩm trống');
     }
     const validRows: CreateProductDto[] = [];
     const invalidRows: any[] = [];
-    for (let i = 0; i < products.length; i++) {
-      const row = products[i];
-      const dto = Object.assign(new CreateProductDto(), row);
+    for (let i = 0; i < items.length; i++) {
+      const row = items[i];
+      const dto: any = {
+        Code: row[0],
+        Sku: row[1],
+        Name: row[2],
+        Material: row[3],
+        SpecText: row[4],
+        Uom: row[5],
+        BaseCost: row[6],
+        Status: row[7],
+        Note: row[8],
+        Barcode:
+          row[9] !== undefined && row[9] !== null ? String(row[9]) : null,
+        HSCode:
+          row[10] !== undefined && row[10] !== null ? String(row[10]) : null,
+        CountryOfOrigin: row[11],
+        WeightKg: row[12],
+        LengthCm: row[13],
+        WidthCm: row[14],
+        HeightCm: row[15],
+        ImageUrl: row[16],
+      };
       let errorList = validateProductDto(dto);
       const uniqueErrors = await checkProductUniqueFields(
-        row,
+        dto,
         this.productRepo,
       );
       errorList = errorList.concat(uniqueErrors);
+      errorList = errorList.filter(
+        (e) =>
+          e &&
+          e.Message &&
+          e.Message !== 'an unknown value was passed to the validate function',
+      );
       if (errorList.length > 0) {
-        invalidRows.push({ Errors: errorList, ...row });
+        const errorCells: number[] = [];
+        const errorMsgs: string[] = [];
+        for (const err of errorList) {
+          const idx = [
+            'Code',
+            'Sku',
+            'Name',
+            'Material',
+            'SpecText',
+            'Uom',
+            'BaseCost',
+            'Status',
+            'Note',
+            'Barcode',
+            'HSCode',
+            'CountryOfOrigin',
+            'WeightKg',
+            'LengthCm',
+            'WidthCm',
+            'HeightCm',
+            'ImageUrl',
+          ].indexOf(err.Property);
+          if (idx !== -1) errorCells.push(idx);
+          errorMsgs.push(err.Message);
+        }
+        invalidRows.push({
+          RowIndex: i,
+          ErrorMessage: errorMsgs.length > 0 ? errorMsgs.join(', ') + '.' : '',
+          ErrorCells: errorCells,
+          CellValues: row,
+        });
       } else {
-        validRows.push(row);
+        validRows.push(dto);
       }
     }
     let inserted = 0;
@@ -91,7 +122,7 @@ export class ProductService {
     }
     return {
       InsertedCount: inserted,
-      InvalidStudents: invalidRows,
+      InvalidProducts: invalidRows,
     };
   }
 

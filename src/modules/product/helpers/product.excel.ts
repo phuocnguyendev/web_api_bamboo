@@ -5,36 +5,76 @@
  */
 import { Workbook } from 'exceljs';
 export async function exportInvalidStudentsExcel(
-  students: any[],
+  invalidRows: Array<{
+    RowIndex: number;
+    ErrorMessage: string;
+    ErrorCells: number[];
+    CellValues: any[];
+  }>,
   filePath: string,
 ) {
   const wb = new Workbook();
-  const ws = wb.addWorksheet('InvalidStudents', {
+  const ws = wb.addWorksheet('InvalidProducts', {
     views: [{ state: 'frozen', ySplit: 1 }],
   });
-
-  // Header mapping: key - title
   const columns = [
-    { key: 'Code', title: 'Mã định danh *', width: 22 },
-    { key: 'Name', title: 'Họ và tên *', width: 22 },
-    { key: 'Birthday', title: 'Ngày sinh', width: 22 },
-    { key: 'Gender', title: 'Giới tính', width: 22 },
-    { key: 'Grade', title: 'Khối *', width: 22 },
-    { key: 'Class', title: 'Lớp *', width: 22 },
-    { key: 'BirthPlace', title: 'Nơi sinh', width: 22 },
-    { key: 'Address', title: 'Địa chỉ', width: 22 },
-    { key: 'PhoneNumber', title: 'Số điện thoại', width: 22 },
-    { key: 'Email', title: 'Email', width: 22 },
-    { key: 'Password', title: 'Mật khẩu', width: 22 },
-    { key: 'ErrorContent', title: 'Nội dung lỗi', width: 40 },
+    { key: 'Code', title: 'Mã định danh *', width: 26 },
+    { key: 'Sku', title: 'Mã sản phẩm *', width: 24 },
+    { key: 'Name', title: 'Tên sản phẩm ', width: 30 },
+    { key: 'Material', title: 'Chất liệu ', width: 22 },
+    { key: 'SpecText', title: 'Thông số kỹ thuật ', width: 32 },
+    { key: 'Uom', title: 'Đơn vị tính ', width: 26 },
+    { key: 'BaseCost', title: 'Giá sản phẩm ', width: 22 },
+    { key: 'Status', title: 'Trạng thái ', width: 22 },
+    { key: 'Note', title: 'Ghi chú', width: 24 },
+    { key: 'Barcode', title: 'Mã vạch *', width: 26 },
+    { key: 'HSCode', title: 'Mã HS *', width: 16 },
+    { key: 'CountryOfOrigin', title: 'Xuất xứ', width: 18 },
+    { key: 'WeightKg', title: 'Khối lượng (kg)', width: 28 },
+    { key: 'LengthCm', title: 'Dài (cm)', width: 18 },
+    { key: 'WidthCm', title: 'Rộng (cm)', width: 18 },
+    { key: 'HeightCm', title: 'Cao (cm)', width: 18 },
+    { key: 'ImageUrl', title: 'Ảnh chính (URL)', width: 38 },
+    { key: 'ErrorContent', title: 'Nội dung lỗi', width: 38 },
   ];
-  ws.columns = columns.map((col) => ({ key: col.key, width: col.width }));
-
-  // Header row
+  // Header
   const headerRow = ws.addRow(columns.map((c) => c.title));
   headerRow.height = 24;
-  headerRow.eachCell((cell) => {
-    cell.font = { name: 'Calibri', size: 11, bold: true };
+  headerRow.eachCell((cell, colNumber) => {
+    const col = columns[colNumber - 1];
+    const idx = (col.title as string).indexOf('*');
+    if (idx !== -1) {
+      cell.value = {
+        richText: [
+          {
+            text: (col.title as string).slice(0, idx).trim() + ' ',
+            font: {
+              name: 'Calibri',
+              size: 11,
+              bold: true,
+              color: { argb: '000000' },
+            },
+          },
+          {
+            text: '*',
+            font: {
+              name: 'Calibri',
+              size: 11,
+              bold: true,
+              color: { argb: 'FF2900' },
+            },
+          },
+        ],
+      };
+    } else {
+      cell.value = col.title;
+      cell.font = {
+        name: 'Calibri',
+        size: 11,
+        bold: true,
+        color: { argb: '000000' },
+      };
+    }
     cell.alignment = {
       vertical: 'middle',
       horizontal: 'center',
@@ -52,36 +92,26 @@ export async function exportInvalidStudentsExcel(
       right: { style: 'thin' },
     };
   });
-
   // Red fill for error
   const redFill = {
     type: 'pattern' as const,
     pattern: 'solid' as const,
-    fgColor: { argb: 'FFFF0000' },
+    fgColor: { argb: 'FFFF9999' },
   };
-
-  for (const student of students) {
-    const rowData = columns.map((col) =>
-      col.key === 'ErrorContent' ? '' : (student[col.key] ?? ''),
-    );
-    // Nội dung lỗi: nối các message
-    const errorContent = Array.isArray(student.Errors)
-      ? student.Errors.map((e: any) => e.Message).join('; ')
-      : '';
-    rowData[columns.length - 1] = errorContent;
+  // Ghi từng dòng lỗi
+  for (const rowObj of invalidRows) {
+    const rowData = [...(rowObj.CellValues || [])];
+    // Thêm cột nội dung lỗi
+    rowData[columns.length - 1] = rowObj.ErrorMessage || '';
     const row = ws.addRow(rowData);
     row.height = 22;
-    // Bôi đỏ các trường có lỗi
-    if (Array.isArray(student.Errors)) {
-      for (const err of student.Errors) {
-        const idx = columns.findIndex((c) => c.key === err.Property);
-        if (idx >= 0) {
-          const cell = row.getCell(idx + 1);
-          cell.fill = redFill;
-        }
+    // Bôi đỏ các ô lỗi
+    if (Array.isArray(rowObj.ErrorCells)) {
+      for (const colIdx of rowObj.ErrorCells) {
+        row.getCell(colIdx + 1).fill = redFill;
       }
       // Bôi đỏ cột nội dung lỗi
-      row.getCell(columns.length + 1).fill = redFill;
+      row.getCell(columns.length).fill = redFill;
     }
     row.eachCell((cell) => {
       cell.font = { name: 'Calibri', size: 11 };
@@ -98,12 +128,29 @@ export async function exportInvalidStudentsExcel(
       };
     });
   }
-
+  // Auto fit width cho từng cột
+  ws.columns.forEach((column, i) => {
+    let maxLength = 12;
+    ws.eachRow((row, rowNumber) => {
+      const cell = row.getCell(i + 1);
+      let cellValue = '';
+      if (cell.value) {
+        if (typeof cell.value === 'object' && 'richText' in cell.value) {
+          cellValue = cell.value.richText.map((r: any) => r.text).join('');
+        } else {
+          cellValue = String(cell.value);
+        }
+      }
+      if (cellValue.length > maxLength) {
+        maxLength = cellValue.length;
+      }
+    });
+    column.width = maxLength + 2;
+  });
   ws.autoFilter = {
     from: { row: 1, column: 1 },
-    to: { row: 1, column: columns.length + 1 },
+    to: { row: 1, column: columns.length },
   };
-
   await wb.xlsx.writeFile(filePath);
 }
 import * as XLSX from 'xlsx';
