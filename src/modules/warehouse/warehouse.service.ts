@@ -58,6 +58,13 @@ export class WarehouseService {
   }
 
   async update(updateWarehouseDto: UpdateWarehouseDto) {
+    const existingWarehouse = await this.warehouseRepository.findOneById(
+      updateWarehouseDto.Id,
+    );
+    if (!existingWarehouse) {
+      throw new NotFoundException('Warehouse not found');
+    }
+
     const errors = await this.warehouseValidator.checkWarehouseUniqueFields(
       updateWarehouseDto,
       this.warehouseRepository,
@@ -132,4 +139,7 @@ export class WarehouseService {
       quantity,
     };
   }
+
+  // GetWarehouseMovements (Lịch sử nhập/xuất/chuyển kho)
+  // GetWarehouseStockSummary (Thống kê tồn kho)
 }
