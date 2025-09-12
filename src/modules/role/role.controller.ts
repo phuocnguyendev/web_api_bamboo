@@ -17,7 +17,7 @@ import { RoleResponse } from 'src/interfaces';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Role')
-@Controller('role')
+@Controller('Role')
 export class RoleController {
   constructor(private readonly rolesService: RoleService) {}
 
@@ -35,7 +35,7 @@ export class RoleController {
     return this.rolesService.findAll();
   }
 
-  @Get(':id')
+  @Get('GetById/:id')
   @ResponseMessage(SUCCESS)
   async findOne(@Param('id') Id: string): Promise<RoleResponse> {
     return this.rolesService.findOne(Id);

@@ -97,7 +97,53 @@ export class WarehouseRepository extends BaseRepository<Warehouse, any> {
     });
     return updated.map((w) => w.Id);
   }
-}
 
-// GetProductsInWarehouse
-// TransferProduct
+  async getProductsInWarehouse(
+    warehouseId: string,
+    page: number,
+    pageSize: number,
+    searchText?: string,
+  ) {
+    const skip = (page - 1) * pageSize;
+    const where: any = {
+      WarehouseId: warehouseId,
+    };
+    if (searchText) {
+      where.Product = { Name: { contains: searchText, mode: 'insensitive' } };
+    }
+    const [data, count] = await Promise.all([
+      this.prisma.stock.findMany({
+        where,
+        skip,
+        take: pageSize,
+        include: { Product: true },
+      }),
+      this.prisma.stock.count({ where }),
+    ]);
+
+    return [data, count];
+  }
+
+  async getStock(warehouseId: string, productId: string) {
+    return this.prisma.stock.findUnique({
+      where: {
+        WarehouseId_ProductId: {
+          WarehouseId: warehouseId,
+          ProductId: productId,
+        },
+      },
+    });
+  }
+
+  async updateStockQty(warehouseId: string, productId: string, delta: number) {
+    return this.prisma.stock.update({
+      where: {
+        WarehouseId_ProductId: {
+          WarehouseId: warehouseId,
+          ProductId: productId,
+        },
+      },
+      data: { QtyOnHand: { increment: delta } },
+    });
+  }
+}

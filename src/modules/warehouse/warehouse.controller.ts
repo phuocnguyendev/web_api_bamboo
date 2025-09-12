@@ -17,9 +17,10 @@ import {
   CreateWarehouseDto,
   UpdateWarehouseDto,
 } from './dto';
+import { TransferProductDto } from './dto/transfer-product.dto';
 
 @ApiTags('Warehouse')
-@Controller('warehouse')
+@Controller('Warehouse')
 export class WarehouseController {
   constructor(private readonly warehouseService: WarehouseService) {}
 
@@ -80,5 +81,47 @@ export class WarehouseController {
   @ResponseMessage(SUCCESS)
   changeStatuses(@Body() body: ChangeWarehouseStatusDto) {
     return this.warehouseService.ChangeWarehouseStatuses(body);
+  }
+
+  @Get('GetProductsInWarehouse')
+  @ResponseMessage(SUCCESS)
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'warehouseId',
+    required: false,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'searchText',
+    required: false,
+    type: String,
+  })
+  getProductsInWarehouse(
+    @Query('searchText') searchText: string = '',
+    @Query('page') page: number = 1,
+    @Query('pageSize') pageSize: number = 30,
+    @Query('warehouseId') warehouseId: string,
+  ) {
+    return this.warehouseService.getProductsInWarehouse(
+      warehouseId,
+      Number(page),
+      Number(pageSize),
+      searchText,
+    );
+  }
+
+  @Post('TransferProduct')
+  @ResponseMessage(SUCCESS)
+  transferProduct(@Body() body: TransferProductDto) {
+    return this.warehouseService.transferProduct(body);
   }
 }
