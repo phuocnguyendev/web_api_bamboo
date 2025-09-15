@@ -1,0 +1,38 @@
+Stock (Tồn kho)
+GetAllStocks
+Lấy danh sách tồn kho, hỗ trợ phân trang, tìm kiếm.
+GetStockById
+Lấy chi tiết tồn kho theo Id (StockId).
+GetStockByWarehouse
+Lấy tồn kho của tất cả sản phẩm trong một kho cụ thể.
+GetStockByProduct
+Lấy tồn kho của một sản phẩm ở tất cả các kho.
+UpdateStock
+Cập nhật tồn kho thủ công/kiểm kê (ví dụ: điều chỉnh số lượng thực tế).
+DeleteStock
+Xóa tồn kho (hiếm dùng, chỉ dùng cho nghiệp vụ đặc biệt).
+GetLowStock
+Cảnh báo tồn kho thấp (dưới mức an toàn hoặc reorder point).
+GetStockSummary
+Thống kê tổng tồn kho, giá trị tồn kho (theo kho, theo sản phẩm, toàn hệ thống).
+ImportStockExcel
+Nhập tồn kho từ file Excel.
+ExportStockExcel
+Xuất tồn kho ra file Excel.
+ResetStock
+Đặt lại tồn kho khi kiểm kê (reset về số lượng mới).
+StockMovement (Lịch sử nhập/xuất/chuyển kho)
+GetAllStockMovements
+Lấy danh sách lịch sử di chuyển kho, hỗ trợ phân trang, tìm kiếm.
+GetStockMovementById
+Lấy chi tiết một phiếu di chuyển kho (StockMovementId).
+GetStockMovementsByProduct
+Lấy lịch sử di chuyển của một sản phẩm (theo ProductId).
+GetStockMovementsByWarehouse
+Lấy lịch sử di chuyển của một kho (theo WarehouseId).
+CreateStockMovement
+Tạo phiếu di chuyển kho (nếu cho phép thao tác thủ công).
+GetStockMovementStats
+Thống kê nhập/xuất/chuyển kho theo thời gian, sản phẩm, kho.
+ExportStockMovementExcel
+Xuất file Excel lịch sử di chuyển kho.

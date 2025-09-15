@@ -3,7 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
+  Put,
   Param,
   Delete,
   Query,
@@ -61,7 +61,7 @@ export class SupplierController {
     return this.supplierService.findOne(id);
   }
 
-  @Patch('Update')
+  @Put('Update')
   @ResponseMessage(SUCCESS)
   update(@Body() updateSupplierDto: UpdateSupplierDto) {
     return this.supplierService.update(updateSupplierDto);

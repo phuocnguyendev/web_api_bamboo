@@ -6,7 +6,7 @@ import {
 } from '../interfaces/warehouse.interface';
 import { PrismaService } from 'src/config/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
-import { ChangeWarehouseStatusDto } from '../dto';
+import { ChangeWarehouseStatusDto, CreateWarehouseDto } from '../dto';
 import { WarehouseStatus } from '../constants/constant';
 
 export const queryWarehouse = {
@@ -25,7 +25,7 @@ export class WarehouseRepository extends BaseRepository<Warehouse, any> {
     super(prisma, prisma.warehouse);
   }
 
-  async createWarehouse(data: WarehouseCreateData): Promise<Warehouse> {
+  async createWarehouse(data: CreateWarehouseDto): Promise<Warehouse> {
     const createData = {
       ...data,
       Status: data.Status ?? WarehouseStatus.Active,
