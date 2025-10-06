@@ -49,7 +49,6 @@ export class SupplierService {
     }
     return checkExist;
   }
-  UpdateSupplierDto;
   async update(updateSupplierDto: UpdateSupplierDto) {
     const existingSupplier = await this.supplierRepository.findOneById(
       updateSupplierDto.Id,
@@ -76,7 +75,7 @@ export class SupplierService {
   async remove(id: string) {
     const checkExist = await this.supplierRepository.findOneById(id);
     if (!checkExist) {
-      throw new NotFoundException(`Không tìm thấy nhà cung cấp `);
+      throw new NotFoundException(`Không tìm thấy nhà cung cấp`);
     }
     await this.supplierRepository.deleteSupplier(id);
 
