@@ -32,7 +32,7 @@ export class StockController {
     return this.stockService.create(createStockDto);
   }
 
-  @Get('GetAllStocks')
+  @Get('GetAllStock')
   @ResponseMessage(SUCCESS)
   @ApiQuery({
     name: 'page',
@@ -227,7 +227,7 @@ export class StockController {
       },
     },
   })
-  async insertMany(@Body() items: any[][]) {
+  async insertMany(@Body() items: unknown[][]) {
     return this.stockService.insertMany(items);
   }
 

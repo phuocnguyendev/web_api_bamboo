@@ -23,7 +23,15 @@ export interface StockCreateData
 export interface StockUpdateData extends Required<Stock> {}
 
 export interface StockResponse
-  extends Omit<Stock, 'WarehouseId' | 'ProductId'> {
+  extends Pick<
+    Stock,
+    | 'Id'
+    | 'QtyOnHand'
+    | 'QtyReserved'
+    | 'SafetyStock'
+    | 'ReorderPoint'
+    | 'MinQty'
+  > {
   Warehouse: {
     Id: string;
     Name: string;
@@ -33,6 +41,7 @@ export interface StockResponse
     Name: string;
   };
 }
+
 export interface StockWithRelation {
   Id: string;
   WarehouseId: string;

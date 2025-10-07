@@ -6,7 +6,7 @@ import {
   StockUpdateData,
 } from '../interfaces/stock.interface';
 import { PrismaService } from 'src/config/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { ImportStockDto } from '../dto';
 
 export const queryStock = {
@@ -28,6 +28,19 @@ export const queryStock = {
 export class StockRepository extends BaseRepository<Stock, any> {
   constructor(prisma: PrismaService) {
     super(prisma, prisma.stock);
+  }
+
+  private mapToStockResponse(stock: StockResponse) {
+    return {
+      Id: stock.Id,
+      QtyOnHand: stock.QtyOnHand,
+      QtyReserved: stock.QtyReserved,
+      SafetyStock: stock.SafetyStock,
+      ReorderPoint: stock.ReorderPoint,
+      MinQty: stock.MinQty,
+      Warehouse: stock.Warehouse,
+      Product: stock.Product,
+    };
   }
 
   async findAllStocks(
@@ -109,16 +122,14 @@ export class StockRepository extends BaseRepository<Stock, any> {
           select: { Id: true, Name: true },
         },
         Product: {
-          select: { Id: true, Name: true, BaseCost: true },
+          select: { Id: true, Name: true },
         },
       },
     });
     if (!stock) {
       throw new Error(`Stock with id ${id} not found`);
     }
-    return {
-      ...stock,
-    };
+    return this.mapToStockResponse(stock);
   }
 
   async findStocksByWarehouse(
@@ -151,7 +162,8 @@ export class StockRepository extends BaseRepository<Stock, any> {
       this.prisma.stock.count({ where }),
     ]);
 
-    return [data as StockResponse[], count];
+    const mappedData = data.map((item) => this.mapToStockResponse(item));
+    return [mappedData, count];
   }
 
   async findStocksByProduct(
@@ -184,7 +196,8 @@ export class StockRepository extends BaseRepository<Stock, any> {
       this.prisma.stock.count({ where }),
     ]);
 
-    return [data as StockResponse[], count];
+    const mappedData = data.map((item) => this.mapToStockResponse(item));
+    return [mappedData, count];
   }
 
   async findLowStocks(
@@ -217,12 +230,10 @@ export class StockRepository extends BaseRepository<Stock, any> {
         ],
       }),
     };
-
-    // Use raw query for complex comparison
     const lowStockQuery = `
       SELECT s."Id", s."WarehouseId", s."ProductId", s."QtyOnHand", 
              s."QtyReserved", s."SafetyStock", s."ReorderPoint", s."MinQty",
-             w."Name" as "WarehouseName", p."Name" as "ProductName", p."Price"
+             w."Name" as "WarehouseName", p."Name" as "ProductName"
       FROM "Stock" s
       JOIN "Warehouse" w ON s."WarehouseId" = w."Id"
       JOIN "Product" p ON s."ProductId" = p."Id"
@@ -274,7 +285,6 @@ export class StockRepository extends BaseRepository<Stock, any> {
       SELECT 
         COUNT(DISTINCT s."ProductId") as "totalProducts",
         SUM(s."QtyOnHand") as "totalStock",
-        SUM(s."QtyOnHand" * p."Price") as "totalValue",
         COUNT(CASE WHEN s."QtyOnHand" <= s."SafetyStock" OR s."QtyOnHand" <= s."ReorderPoint" THEN 1 END) as "lowStockProducts",
         COUNT(DISTINCT s."WarehouseId") as "warehouseCount"
       FROM "Stock" s
@@ -286,8 +296,7 @@ export class StockRepository extends BaseRepository<Stock, any> {
         w."Id" as "warehouseId",
         w."Name" as "warehouseName",
         COUNT(s."ProductId") as "productCount",
-        SUM(s."QtyOnHand") as "totalStock",
-        SUM(s."QtyOnHand" * p."Price") as "totalValue"
+        SUM(s."QtyOnHand") as "totalStock"
       FROM "Stock" s
       JOIN "Warehouse" w ON s."WarehouseId" = w."Id"
       JOIN "Product" p ON s."ProductId" = p."Id"
@@ -300,18 +309,39 @@ export class StockRepository extends BaseRepository<Stock, any> {
         p."Id" as "productId",
         p."Name" as "productName",
         SUM(s."QtyOnHand") as "totalStock",
-        COUNT(s."WarehouseId") as "warehouseCount",
-        AVG(p."Price") as "averagePrice"
+        COUNT(s."WarehouseId") as "warehouseCount"
       FROM "Stock" s
       JOIN "Product" p ON s."ProductId" = p."Id"
       GROUP BY p."Id", p."Name"
       ORDER BY p."Name"
     `);
 
+    const summaryData = (summary as any[])[0];
+    const convertedSummary = {
+      totalProducts: Number(summaryData.totalProducts),
+      totalStock: Number(summaryData.totalStock),
+      lowStockProducts: Number(summaryData.lowStockProducts),
+      warehouseCount: Number(summaryData.warehouseCount),
+    };
+
+    const convertedByWarehouse = (byWarehouse as any[]).map((item) => ({
+      warehouseId: item.warehouseId,
+      warehouseName: item.warehouseName,
+      productCount: Number(item.productCount),
+      totalStock: Number(item.totalStock),
+    }));
+
+    const convertedByProduct = (byProduct as any[]).map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      totalStock: Number(item.totalStock),
+      warehouseCount: Number(item.warehouseCount),
+    }));
+
     return {
-      summary: (summary as any[])[0],
-      byWarehouse: byWarehouse as any[],
-      byProduct: byProduct as any[],
+      summary: convertedSummary,
+      byWarehouse: convertedByWarehouse,
+      byProduct: convertedByProduct,
     };
   }
 
@@ -320,6 +350,22 @@ export class StockRepository extends BaseRepository<Stock, any> {
   }
 
   async createWithResponse(data: StockCreateData): Promise<StockResponse> {
+    const warehouse = await this.prisma.warehouse.findUnique({
+      where: { Id: data.WarehouseId },
+      select: { Id: true, Name: true },
+    });
+    if (!warehouse) {
+      throw new ConflictException(`Không tìm thấy kho`);
+    }
+
+    const product = await this.prisma.product.findUnique({
+      where: { Id: data.ProductId },
+      select: { Id: true, Name: true },
+    });
+    if (!product) {
+      throw new ConflictException(`Không tìm thấy sản phẩm`);
+    }
+
     const stock = await this.prisma.stock.create({
       data,
       include: {
@@ -327,9 +373,7 @@ export class StockRepository extends BaseRepository<Stock, any> {
         Product: { select: { Id: true, Name: true } },
       },
     });
-    return {
-      ...stock,
-    };
+    return this.mapToStockResponse(stock);
   }
 
   async updateStock(
@@ -344,9 +388,7 @@ export class StockRepository extends BaseRepository<Stock, any> {
         Product: { select: { Id: true, Name: true } },
       },
     });
-    return {
-      ...stock,
-    };
+    return this.mapToStockResponse(stock);
   }
 
   async resetStock(id: string, qtyOnHand: number): Promise<StockResponse> {

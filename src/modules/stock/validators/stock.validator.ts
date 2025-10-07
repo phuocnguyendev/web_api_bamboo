@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { StockRepository } from '../repositories/stock.repository';
 import { StockWithRelation } from '../interfaces/stock.interface';
 import { validateSync } from 'class-validator';
@@ -8,7 +8,10 @@ import { ImportStockDto } from '../dto';
 export class StockValidator {
   constructor(private readonly stockRepository: StockRepository) {}
 
-  async ensureUniqueCombination(row: any, stockRepository?: StockRepository) {
+  async ensureUniqueCombination(
+    row: { Id?: string; WarehouseId: string; ProductId: string },
+    stockRepository?: StockRepository,
+  ): Promise<void> {
     const repo = stockRepository || this.stockRepository;
     const currentId = row.Id;
 
@@ -22,7 +25,9 @@ export class StockValidator {
       const warehouseName = existing.Warehouse?.Name ?? row.WarehouseId;
       const productName = existing.Product?.Name ?? row.ProductId;
 
-      throw new Error(`Kho "${warehouseName}" đã có sản phẩm "${productName}"`);
+      throw new ConflictException(
+        `Kho ${warehouseName} đã có sản phẩm ${productName}`,
+      );
     }
   }
 
@@ -43,8 +48,10 @@ export class StockValidator {
 
       try {
         await this.ensureUniqueCombination(row);
-      } catch (err: any) {
-        errors.push(`Dòng ${i + 2}: ${err.message}`);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Lỗi không xác định';
+        errors.push(`Dòng ${i + 2}: ${message}`);
       }
     }
     return errors;
@@ -60,7 +67,7 @@ const customMessages: Record<string, string> = {
 };
 
 export function validateStockDto(
-  dto: any,
+  dto: Record<string, unknown>,
 ): { Property: string; Message: string }[] {
   const validationErrors = validateSync(dto, { whitelist: true });
   const errorList: { Property: string; Message: string }[] = [];
@@ -77,7 +84,7 @@ export function validateStockDto(
 }
 
 export async function checkStockUniqueFields(
-  row: any,
+  row: { Id?: string; WarehouseId: string; ProductId: string },
   stockRepo: StockRepository,
 ) {
   const errorList: { Property: string; Message: string }[] = [];
@@ -96,10 +103,12 @@ export async function checkStockUniqueFields(
         Message: `Kho và sản phẩm này đã tồn tại trong hệ thống`,
       });
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? e.message : 'Lỗi kiểm tra tính duy nhất';
     errorList.push({
       Property: 'WarehouseId',
-      Message: e.message || 'Lỗi kiểm tra tính duy nhất',
+      Message: message,
     });
   }
 

@@ -22,6 +22,7 @@ import {
   parseStockExcel,
 } from './helpers/stock.excel';
 import * as XLSX from 'xlsx';
+import { StockResponse } from './interfaces/stock.interface';
 
 @Injectable()
 export class StockService {
@@ -125,7 +126,7 @@ export class StockService {
       throw new NotFoundException(`Không tìm thấy tồn kho`);
     }
 
-    const updateData: any = {};
+    const updateData: Partial<UpdateStockDto> = {};
     if (updateStockDto.QtyOnHand !== undefined) {
       updateData.QtyOnHand = updateStockDto.QtyOnHand;
     }
@@ -182,19 +183,24 @@ export class StockService {
     };
   }
 
-  async insertMany(items: any[][]) {
+  async insertMany(items: unknown[][]) {
     if (!Array.isArray(items) || items.length === 0) {
       throw new BadRequestException('Danh sách tồn kho trống');
     }
 
     const validRows: ImportStockDto[] = [];
-    const invalidRows: any[] = [];
+    const invalidRows: {
+      RowIndex: number;
+      ErrorMessage: string;
+      ErrorCells: number[];
+      CellValues: unknown[];
+    }[] = [];
 
     for (let i = 0; i < items.length; i++) {
       const row = items[i];
-      const dto: any = {
-        WarehouseId: row[0],
-        ProductId: row[1],
+      const dto: ImportStockDto = {
+        WarehouseId: String(row[0] || ''),
+        ProductId: String(row[1] || ''),
         QtyOnHand: row[2] !== undefined && row[2] !== null ? Number(row[2]) : 0,
         QtyReserved:
           row[3] !== undefined && row[3] !== null ? Number(row[3]) : 0,
@@ -205,7 +211,9 @@ export class StockService {
         MinQty: row[6] !== undefined && row[6] !== null ? Number(row[6]) : 0,
       };
 
-      let errorList = validateStockDto(dto);
+      let errorList = validateStockDto(
+        dto as unknown as Record<string, unknown>,
+      );
       const uniqueErrors = await checkStockUniqueFields(
         dto,
         this.stockRepository,
