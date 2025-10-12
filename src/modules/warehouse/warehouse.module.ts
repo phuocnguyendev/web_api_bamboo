@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { WarehouseService } from './warehouse.service';
-import { WarehouseController } from './warehouse.controller';
 import { PrismaService } from 'src/config/prisma/prisma.service';
 import { WarehouseRepository } from './repositories/warehouse.repository';
 import { WarehouseValidator } from './validators';
+import { WarehouseController } from './warehouse.controller';
+import { WarehouseService } from './warehouse.service';
 
 @Module({
   controllers: [WarehouseController],
@@ -13,5 +13,6 @@ import { WarehouseValidator } from './validators';
     WarehouseRepository,
     WarehouseValidator,
   ],
+  exports: [WarehouseRepository],
 })
 export class WarehouseModule {}

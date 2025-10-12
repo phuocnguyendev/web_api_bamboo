@@ -13,6 +13,7 @@ import { ReceiptModule } from './modules/receipt/receipt.module';
 import { RoleModule } from './modules/role/role.module';
 import { StockMovementModule } from './modules/stock-movement/stock-movement.module';
 import { StockModule } from './modules/stock/stock.module';
+import { StockOutItemModule } from './modules/stockOutItem/stock-out-item.module';
 import { StockOutVoucherModule } from './modules/stockOutVoucher/stock-out-voucher.module';
 import { SupplierModule } from './modules/supplier/supplier.module';
 import { UserModule } from './modules/user/user.module';
@@ -39,6 +40,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
     StockMovementModule,
     ReceiptModule,
     StockOutVoucherModule,
+    StockOutItemModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
