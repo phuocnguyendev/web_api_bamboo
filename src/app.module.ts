@@ -7,15 +7,16 @@ import { PrismaModule } from './config/prisma/prisma.module';
 import { PrismaService } from './config/prisma/prisma.service';
 
 import { AuthModule } from './modules/auth/auth.module';
-import { RoleModule } from './modules/role/role.module';
-import { UserModule } from './modules/user/user.module';
 import { PermissionModule } from './modules/permission/permission.module';
 import { ProductModule } from './modules/product/product.module';
-import { SupplierModule } from './modules/supplier/supplier.module';
-import { WarehouseModule } from './modules/warehouse/warehouse.module';
-import { StockModule } from './modules/stock/stock.module';
-import { StockMovementModule } from './modules/stock-movement/stock-movement.module';
 import { ReceiptModule } from './modules/receipt/receipt.module';
+import { RoleModule } from './modules/role/role.module';
+import { StockMovementModule } from './modules/stock-movement/stock-movement.module';
+import { StockModule } from './modules/stock/stock.module';
+import { StockOutVoucherModule } from './modules/stockOutVoucher/stock-out-voucher.module';
+import { SupplierModule } from './modules/supplier/supplier.module';
+import { UserModule } from './modules/user/user.module';
+import { WarehouseModule } from './modules/warehouse/warehouse.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ReceiptModule } from './modules/receipt/receipt.module';
     StockModule,
     StockMovementModule,
     ReceiptModule,
+    StockOutVoucherModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
