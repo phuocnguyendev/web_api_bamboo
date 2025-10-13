@@ -9,6 +9,13 @@ import { Receipt, ReceiptItem } from '../interfaces/receipt.interface';
 export class ReceiptRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findByCode(code: string): Promise<Receipt | null> {
+    return (await this.prisma.receipt.findUnique({
+      where: { Code: code },
+      include: { Items: true },
+    })) as any;
+  }
+
   async create(data: CreateReceiptDto): Promise<Receipt> {
     const { Items, Status, ...receiptData } = data;
     const created = await this.prisma.receipt.create({

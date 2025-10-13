@@ -2,7 +2,10 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
+// ...existing code...
+import { IReceiptResponse } from './dto/response.dto';
 import * as path from 'path';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { ExportReceiptDto } from './dto/export-receipt.dto';
@@ -21,25 +24,46 @@ import { ReceiptValidator } from './validators/receipt.validator';
 export class ReceiptService {
   constructor(
     private readonly receiptRepository: ReceiptRepository,
-    private readonly receiptItemRepository: ReceiptItemRepository,
     private readonly receiptValidator: ReceiptValidator,
   ) {}
 
   async create(createReceiptDto: CreateReceiptDto) {
+    const existing = await this.receiptRepository.findByCode(
+      createReceiptDto.Code,
+    );
+    if (existing) {
+      throw new ConflictException('Receipt with this code already exists');
+    }
     return this.receiptRepository.create(createReceiptDto);
   }
 
   async update(id: string, updateReceiptDto: UpdateReceiptDto) {
-    // Optionally: check existence
+    const current = await this.receiptRepository.findById(id);
+    if (!current) {
+      throw new NotFoundException('Receipt not found');
+    }
+    if (updateReceiptDto.Code && updateReceiptDto.Code !== current.Code) {
+      const duplicate = await this.receiptRepository.findByCode(
+        updateReceiptDto.Code,
+      );
+      if (duplicate && duplicate.Id !== id) {
+        throw new ConflictException('Receipt with this code already exists');
+      }
+    }
     return this.receiptRepository.update(id, updateReceiptDto);
   }
 
   async remove(id: string) {
+    const current = await this.receiptRepository.findById(id);
+    if (!current) {
+      throw new NotFoundException('Receipt not found');
+    }
     return this.receiptRepository.delete(id);
   }
 
-  async findAll(filter: FilterReceiptDto) {
-    return this.receiptRepository.findAll(filter);
+  async findAll(filter: FilterReceiptDto): Promise<IReceiptResponse> {
+    const { ListModel, Count } = await this.receiptRepository.findAll(filter);
+    return new IReceiptResponse(ListModel, Count);
   }
 
   async findOne(id: string) {
@@ -53,10 +77,8 @@ export class ReceiptService {
   }
 
   async importExcel(buffer: Buffer) {
-    // Parse Excel and validate receipts in batch
-    const { header, data } = parseReceiptExcel(buffer);
+    const { data } = parseReceiptExcel(buffer);
     const receipts: CreateReceiptDto[] = data.map((row) => {
-      // Map row to DTO (assume order matches columns)
       const [
         Code,
         SupplierId,
@@ -78,13 +100,12 @@ export class ReceiptService {
         HandlingCost: HandlingCost ? Number(HandlingCost) : undefined,
         OtherCost: OtherCost ? Number(OtherCost) : undefined,
         Note,
-        Items: [], // Items import có thể làm riêng
+        Items: [],
       } as CreateReceiptDto;
     });
 
     const errors = await this.receiptValidator.validateImportRows(receipts);
     if (errors.length > 0) {
-      // Build invalidRows for Excel export
       const invalidRows = receipts
         .map((r, idx) => ({
           RowIndex: idx + 2,
@@ -110,7 +131,6 @@ export class ReceiptService {
   }
 
   async exportExcel(dto: ExportReceiptDto): Promise<string> {
-    // Export receipts to Excel and return file path
     const filePath = path.join(__dirname, 'exported_receipts.xlsx');
     await exportReceiptExcelSample(filePath);
     return filePath;

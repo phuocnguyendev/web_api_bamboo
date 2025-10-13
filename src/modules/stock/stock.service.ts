@@ -22,7 +22,6 @@ import {
   parseStockExcel,
 } from './helpers/stock.excel';
 import * as XLSX from 'xlsx';
-import { StockResponse } from './interfaces/stock.interface';
 
 @Injectable()
 export class StockService {

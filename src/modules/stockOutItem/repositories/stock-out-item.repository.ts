@@ -30,6 +30,13 @@ import {
 export class StockOutItemRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findById(id: string): Promise<StockOutItem | null> {
+    const item = await this.prisma.stockOutItem.findUnique({
+      where: { Id: id },
+    });
+    return item ? mapStockOutItem(item) : null;
+  }
+
   async create(data: CreateStockOutItemDto): Promise<StockOutItem> {
     const created = await this.prisma.stockOutItem.create({ data });
     return mapStockOutItem(created);
@@ -66,14 +73,10 @@ export class StockOutItemRepository {
     return items.map(mapStockOutItem);
   }
 
-  async reportByProduct({
-    fromDate,
-    toDate,
-  }: {
+  async reportByProduct({}: {
     fromDate?: Date;
     toDate?: Date;
   }): Promise<StockOutItemReport[]> {
-    // Example: group by ProductId, sum Qty, sum Qty*UnitCostSnapshot
     const result = await this.prisma.stockOutItem.groupBy({
       by: ['ProductId'],
       _sum: { Qty: true },
@@ -81,10 +84,9 @@ export class StockOutItemRepository {
       _max: { UnitCostSnapshot: true },
       _avg: { UnitCostSnapshot: true },
     });
-    // Map to report interface
     return result.map((r) => ({
       ProductId: r.ProductId,
-      ProductName: '', // join thêm nếu cần
+      ProductName: '',
       TotalQty: r._sum.Qty ?? 0,
       TotalValue: (r._sum.Qty ?? 0) * decimalToNumber(r._avg.UnitCostSnapshot),
       MinUnitCost: decimalToNumber(r._min.UnitCostSnapshot),

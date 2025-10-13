@@ -109,7 +109,6 @@ export class StockMovementService {
   async createStockMovement(
     createDto: CreateStockMovementDto,
   ): Promise<StockMovementResponse> {
-    // Validate the create data
     const createData = {
       Type: createDto.Type,
       RefType: createDto.RefType,

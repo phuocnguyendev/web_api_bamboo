@@ -26,7 +26,6 @@ export class StockOutVoucherService {
   ) {}
 
   async create(createDto: CreateStockOutVoucherDto) {
-    // Validate warehouse
     const warehouse = createDto.WarehouseId
       ? await this.warehouseRepository.findOneById(createDto.WarehouseId)
       : null;
@@ -35,7 +34,6 @@ export class StockOutVoucherService {
         'Warehouse không tồn tại hoặc không hoạt động',
       );
     }
-    // Validate warehouseTo nếu có
     if (createDto.WarehouseToId) {
       const warehouseTo = await this.warehouseRepository.findOneById(
         createDto.WarehouseToId,
@@ -46,7 +44,6 @@ export class StockOutVoucherService {
         );
       }
     }
-    // Validate từng sản phẩm và tồn kho
     for (const item of createDto.Items) {
       const product = await this.productRepository.findProductById(
         item.ProductId,
@@ -56,7 +53,6 @@ export class StockOutVoucherService {
           `Product ${item.ProductId} không tồn tại hoặc không hoạt động`,
         );
       }
-      // Kiểm tra tồn kho
       const stock = await this.stockRepository.findByWarehouseAndProduct(
         createDto.WarehouseId,
         item.ProductId,
@@ -71,7 +67,6 @@ export class StockOutVoucherService {
   }
 
   async update(id: string, updateDto: UpdateStockOutVoucherDto) {
-    // Validate warehouse
     const warehouse = updateDto.WarehouseId
       ? await this.warehouseRepository.findOneById(updateDto.WarehouseId)
       : null;
@@ -80,7 +75,6 @@ export class StockOutVoucherService {
         'Warehouse không tồn tại hoặc không hoạt động',
       );
     }
-    // Validate warehouseTo nếu có
     if (updateDto.WarehouseToId) {
       const warehouseTo = await this.warehouseRepository.findOneById(
         updateDto.WarehouseToId,
@@ -91,7 +85,6 @@ export class StockOutVoucherService {
         );
       }
     }
-    // Validate từng sản phẩm và tồn kho
     if (updateDto.Items) {
       for (const item of updateDto.Items) {
         const product = await this.productRepository.findProductById(
@@ -102,7 +95,6 @@ export class StockOutVoucherService {
             `Product ${item.ProductId} không tồn tại hoặc không hoạt động`,
           );
         }
-        // Kiểm tra tồn kho
         const stock = await this.stockRepository.findByWarehouseAndProduct(
           updateDto.WarehouseId!,
           item.ProductId,
@@ -136,12 +128,10 @@ export class StockOutVoucherService {
   }
 
   async importExcel(buffer: Buffer) {
-    // Parse Excel and validate vouchers in batch
     const importDtos = StockOutVoucherExcelHelper.parseImportExcel(buffer);
     if (!importDtos.length) {
       throw new BadRequestException('No data found in import file');
     }
-    // Only support one batch per import
     const {
       valid,
       invalid,
