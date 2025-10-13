@@ -22,6 +22,72 @@ import { ReceiptValidator } from './validators/receipt.validator';
 
 @Injectable()
 export class ReceiptService {
+  /**
+   * Batch insert receipts from array of arrays (rows), similar to ProductService.insertMany
+   * @param items Array of rows, each row is an array of receipt fields
+   */
+  async insertMany(items: any[][]) {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new BadRequestException('Danh sách phiếu nhập trống');
+    }
+    const validRows: CreateReceiptDto[] = [];
+    const invalidRows: any[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const row = items[i];
+      const dto: any = {
+        Code: row[0],
+        SupplierId: row[1],
+        WarehouseId: row[2],
+        Status: row[3],
+        ReceivedAt: row[4],
+        FreightCost: row[5] ? Number(row[5]) : undefined,
+        HandlingCost: row[6] ? Number(row[6]) : undefined,
+        OtherCost: row[7] ? Number(row[7]) : undefined,
+        Note: row[8],
+        Items: [],
+      };
+      // Validate using validator
+      let errorList: string[] = [];
+      const validationErrors = await this.receiptValidator.validateImportRows([
+        dto,
+      ]);
+      if (validationErrors.length > 0) {
+        errorList = validationErrors;
+      }
+      // Check unique code
+      const existing = await this.receiptRepository.findByCode(dto.Code);
+      if (existing) {
+        errorList.push('Mã phiếu nhập đã tồn tại: ' + dto.Code);
+      }
+      if (errorList.length > 0) {
+        // Map error to errorCells (column indices)
+        const errorCells: number[] = [];
+        const errorMsgs: string[] = errorList;
+        // For simplicity, mark all columns as error if any error
+        for (let j = 0; j < row.length; j++) errorCells.push(j);
+        invalidRows.push({
+          RowIndex: i,
+          ErrorMessage: errorMsgs.join(', '),
+          ErrorCells: errorCells,
+          CellValues: row,
+        });
+      } else {
+        validRows.push(dto);
+      }
+    }
+    let inserted = 0;
+    if (validRows.length > 0) {
+      // Insert receipts one by one (could be optimized to true bulk if needed)
+      for (const dto of validRows) {
+        await this.receiptRepository.create(dto);
+      }
+      inserted = validRows.length;
+    }
+    return {
+      InsertedCount: inserted,
+      InvalidReceipts: invalidRows,
+    };
+  }
   constructor(
     private readonly receiptRepository: ReceiptRepository,
     private readonly receiptValidator: ReceiptValidator,
@@ -78,56 +144,17 @@ export class ReceiptService {
 
   async importExcel(buffer: Buffer) {
     const { data } = parseReceiptExcel(buffer);
-    const receipts: CreateReceiptDto[] = data.map((row) => {
-      const [
-        Code,
-        SupplierId,
-        WarehouseId,
-        Status,
-        ReceivedAt,
-        FreightCost,
-        HandlingCost,
-        OtherCost,
-        Note,
-      ] = row;
-      return {
-        Code,
-        SupplierId,
-        WarehouseId,
-        Status,
-        ReceivedAt,
-        FreightCost: FreightCost ? Number(FreightCost) : undefined,
-        HandlingCost: HandlingCost ? Number(HandlingCost) : undefined,
-        OtherCost: OtherCost ? Number(OtherCost) : undefined,
-        Note,
-        Items: [],
-      } as CreateReceiptDto;
-    });
-
-    const errors = await this.receiptValidator.validateImportRows(receipts);
-    if (errors.length > 0) {
-      const invalidRows = receipts
-        .map((r, idx) => ({
-          RowIndex: idx + 2,
-          ErrorMessage: errors[idx] || '',
-          ErrorCells: [],
-          CellValues: Object.values(r),
-        }))
-        .filter((r) => r.ErrorMessage);
+    const result = await this.insertMany(data);
+    if (result.InvalidReceipts && result.InvalidReceipts.length > 0) {
       const filePath = path.join(__dirname, 'InvalidReceipt.xlsx');
-      await exportInvalidReceiptsExcel(invalidRows, filePath);
+      await exportInvalidReceiptsExcel(result.InvalidReceipts, filePath);
       throw new BadRequestException({
         message: 'Dữ liệu import không hợp lệ',
         errorFile: filePath,
-        errors,
+        errors: result.InvalidReceipts,
       });
     }
-
-    const results: Awaited<ReturnType<typeof this.create>>[] = [];
-    for (const dto of receipts) {
-      results.push(await this.create(dto));
-    }
-    return { imported: results.length };
+    return { imported: result.InsertedCount };
   }
 
   async exportExcel(dto: ExportReceiptDto): Promise<string> {

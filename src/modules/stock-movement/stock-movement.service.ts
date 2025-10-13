@@ -23,6 +23,71 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class StockMovementService {
+  /**
+   * Batch insert stock movements from array of arrays (rows), similar to Receipt/Product/StockOutVoucher insertMany
+   * @param items Array of rows, each row is an array of movement fields
+   */
+  async insertMany(items: any[][]) {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new BadRequestException('Danh sách lịch sử kho trống');
+    }
+    const validRows: CreateStockMovementDto[] = [];
+    const invalidRows: any[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const row = items[i];
+      const dto: any = {
+        Type: row[0],
+        RefType: row[1],
+        RefId: row[2],
+        WarehouseId: row[3],
+        WarehouseToId: row[4],
+        ProductId: row[5],
+        Qty: row[6],
+        UnitCost: row[7],
+        Reason: row[8],
+        OccurredAt: row[9],
+        CreatedBy: row[10],
+      };
+      // Validate using validator
+      let errorList: string[] = [];
+      const instance = Object.assign(
+        new (require('./dto/create-stock-movement.dto').CreateStockMovementDto)(),
+        dto,
+      );
+      const { validateSync } = require('class-validator');
+      const validationErrors = validateSync(instance, { whitelist: true });
+      if (validationErrors.length > 0) {
+        errorList = validationErrors.map((e: any) =>
+          Object.values(e.constraints || {}).join(', '),
+        );
+      }
+      if (errorList.length > 0) {
+        // Map error to errorCells (column indices)
+        const errorCells: number[] = [];
+        const errorMsgs: string[] = errorList;
+        for (let j = 0; j < row.length; j++) errorCells.push(j);
+        invalidRows.push({
+          RowIndex: i,
+          ErrorMessage: errorMsgs.join(', '),
+          ErrorCells: errorCells,
+          CellValues: row,
+        });
+      } else {
+        validRows.push(dto);
+      }
+    }
+    let inserted = 0;
+    if (validRows.length > 0) {
+      for (const dto of validRows) {
+        await this.createStockMovement(dto);
+      }
+      inserted = validRows.length;
+    }
+    return {
+      InsertedCount: inserted,
+      InvalidStockMovements: invalidRows,
+    };
+  }
   constructor(
     private readonly stockMovementRepository: StockMovementRepository,
     private readonly stockMovementValidator: StockMovementValidator,
@@ -233,40 +298,37 @@ export class StockMovementService {
   /**
    * Import stock movements from Excel file
    */
-  async importStockMovementsFromExcel(buffer: Buffer): Promise<{
-    successCount: number;
-    errorCount: number;
-    errors: Array<{
-      row: number;
-      data: any;
-      errors: string[];
-    }>;
-  }> {
+  async importStockMovementsFromExcel(buffer: Buffer): Promise<any> {
     const { validMovements, invalidMovements } =
       StockMovementHelper.parseMovementExcel(buffer);
-
-    let successCount = 0;
-
-    // Process valid movements
-    for (const movementData of validMovements) {
-      try {
-        await this.stockMovementValidator.validateCreateData(movementData);
-        await this.stockMovementRepository.createStockMovement(movementData);
-        successCount++;
-      } catch (error) {
-        // Add to invalid movements if validation fails
-        invalidMovements.push({
-          row: -1, // Will need to track row number properly
-          data: movementData,
-          errors: [error.message || 'Validation error'],
-        });
-      }
-    }
-
+    // Convert validMovements to array of arrays for insertMany
+    const rows: any[][] = validMovements.map((v) => [
+      v.Type,
+      v.RefType,
+      v.RefId,
+      v.WarehouseId,
+      v.WarehouseToId,
+      v.ProductId,
+      v.Qty,
+      v.UnitCost,
+      v.Reason,
+      v.OccurredAt,
+      v.CreatedBy,
+    ]);
+    const result = await this.insertMany(rows);
+    // Merge invalidMovements from Excel parse and validation errors from insertMany
+    const allInvalid = [
+      ...invalidMovements.map((inv) => ({
+        RowIndex: inv.row,
+        ErrorMessage: inv.errors.join(', '),
+        ErrorCells: [],
+        CellValues: Object.values(inv.data),
+      })),
+      ...(result.InvalidStockMovements || []),
+    ];
     return {
-      successCount,
-      errorCount: invalidMovements.length,
-      errors: invalidMovements,
+      InsertedCount: result.InsertedCount,
+      InvalidStockMovements: allInvalid,
     };
   }
 

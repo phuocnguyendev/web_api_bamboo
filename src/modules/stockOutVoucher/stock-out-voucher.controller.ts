@@ -25,9 +25,23 @@ import { UpdateStockOutVoucherDto } from './dto/update-stock-out-voucher.dto';
 import { StockOutVoucherExcelHelper } from './helpers/stockOutVoucher.excel';
 import { StockOutVoucherService } from './stock-out-voucher.service';
 
-@ApiTags('StockOutVouchers')
-@Controller('StockOutVouchers')
+@ApiTags('StockOutVoucher')
+@Controller('StockOutVoucher')
 export class StockOutVoucherController {
+  @Post('InsertMany')
+  @ResponseMessage(SUCCESS)
+  @ApiBody({
+    schema: {
+      type: 'array',
+      items: {
+        type: 'array',
+        items: { type: 'string' },
+      },
+    },
+  })
+  async insertMany(@Body() items: any[][]) {
+    return this.stockOutVoucherService.insertMany(items);
+  }
   constructor(
     private readonly stockOutVoucherService: StockOutVoucherService,
   ) {}

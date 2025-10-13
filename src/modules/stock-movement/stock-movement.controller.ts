@@ -11,6 +11,7 @@ import {
   HttpStatus,
   ParseIntPipe,
   DefaultValuePipe,
+  Put,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -30,31 +31,32 @@ import { IStockMovementResponse } from './dto/response';
 import { ResponseMessage } from 'src/core';
 import { SUCCESS } from 'src/constants';
 
-@ApiTags('Stock Movement - Lịch sử nhập/xuất/chuyển kho')
-@Controller('stock-movements')
+@ApiTags('Stock-Movement')
+@Controller('StockMovement')
 export class StockMovementController {
+  @Post('InsertMany')
+  @ResponseMessage(SUCCESS)
+  async insertMany(@Body() items: any[][]) {
+    return this.stockMovementService.insertMany(items);
+  }
   constructor(private readonly stockMovementService: StockMovementService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lấy danh sách lịch sử di chuyển kho' })
   @ResponseMessage(SUCCESS)
   @ApiQuery({
     name: 'page',
     required: false,
     type: Number,
-    description: 'Số trang',
   })
   @ApiQuery({
     name: 'pageSize',
     required: false,
     type: Number,
-    description: 'Số lượng mỗi trang',
   })
   @ApiQuery({
     name: 'searchText',
     required: false,
     type: String,
-    description: 'Từ khóa tìm kiếm',
   })
   async getAllStockMovements(
     @Query() filterDto: FilterStockMovementDto,
@@ -62,8 +64,7 @@ export class StockMovementController {
     return this.stockMovementService.getAllStockMovements(filterDto);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Lấy chi tiết một phiếu di chuyển kho' })
+  @Get('GetById/:id')
   @ResponseMessage(SUCCESS)
   async getStockMovementById(
     @Param('id') id: string,
@@ -71,26 +72,22 @@ export class StockMovementController {
     return this.stockMovementService.getStockMovementById(id);
   }
 
-  @Get('by-product/:productId')
-  @ApiOperation({ summary: 'Lấy lịch sử di chuyển của một sản phẩm' })
+  @Get('GetByProduct/:productId')
   @ResponseMessage(SUCCESS)
   @ApiQuery({
     name: 'page',
     required: false,
     type: Number,
-    description: 'Số trang',
   })
   @ApiQuery({
     name: 'pageSize',
     required: false,
     type: Number,
-    description: 'Số lượng mỗi trang',
   })
   @ApiQuery({
     name: 'searchText',
     required: false,
     type: String,
-    description: 'Từ khóa tìm kiếm',
   })
   async getStockMovementsByProduct(
     @Param('productId') productId: string,
@@ -106,26 +103,22 @@ export class StockMovementController {
     );
   }
 
-  @Get('by-warehouse/:warehouseId')
-  @ApiOperation({ summary: 'Lấy lịch sử di chuyển của một kho' })
+  @Get('GetByWarehouse/:warehouseId')
   @ResponseMessage(SUCCESS)
   @ApiQuery({
     name: 'page',
     required: false,
     type: Number,
-    description: 'Số trang',
   })
   @ApiQuery({
     name: 'pageSize',
     required: false,
     type: Number,
-    description: 'Số lượng mỗi trang',
   })
   @ApiQuery({
     name: 'searchText',
     required: false,
     type: String,
-    description: 'Từ khóa tìm kiếm',
   })
   async getStockMovementsByWarehouse(
     @Param('warehouseId') warehouseId: string,
@@ -141,8 +134,7 @@ export class StockMovementController {
     );
   }
 
-  @Post()
-  @ApiOperation({ summary: 'Tạo phiếu di chuyển kho' })
+  @Post('Create')
   @ResponseMessage(SUCCESS)
   async createStockMovement(
     @Body() createDto: CreateStockMovementDto,
@@ -150,8 +142,7 @@ export class StockMovementController {
     return this.stockMovementService.createStockMovement(createDto);
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật phiếu di chuyển kho' })
+  @Put('Update/:id')
   @ResponseMessage(SUCCESS)
   async updateStockMovement(
     @Param('id') id: string,
@@ -160,15 +151,13 @@ export class StockMovementController {
     return this.stockMovementService.updateStockMovement(id, updateDto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Xóa phiếu di chuyển kho' })
+  @Delete('Delete/:id')
   @ResponseMessage(SUCCESS)
   async deleteStockMovement(@Param('id') id: string): Promise<void> {
     return this.stockMovementService.deleteStockMovement(id);
   }
 
-  @Get('stats/summary')
-  @ApiOperation({ summary: 'Thống kê nhập/xuất/chuyển kho' })
+  @Get('Stats/summary')
   @ResponseMessage(SUCCESS)
   async getStockMovementStats(
     @Query() statsDto: StockMovementStatsDto,
@@ -176,8 +165,7 @@ export class StockMovementController {
     return this.stockMovementService.getStockMovementStats(statsDto);
   }
 
-  @Get('export/excel')
-  @ApiOperation({ summary: 'Xuất file Excel lịch sử di chuyển kho' })
+  @Get('Export/Excel')
   @ResponseMessage(SUCCESS)
   async exportStockMovementExcel(
     @Query() filterDto: FilterStockMovementDto,
@@ -208,10 +196,7 @@ export class StockMovementController {
     }
   }
 
-  @Get('import/template')
-  @ApiOperation({
-    summary: 'Tải template Excel để import lịch sử di chuyển kho',
-  })
+  @Get('Import/DownloadTemplate')
   @ResponseMessage(SUCCESS)
   async getImportTemplate(@Res() res: Response) {
     try {
@@ -237,8 +222,7 @@ export class StockMovementController {
     }
   }
 
-  @Post('import/excel')
-  @ApiOperation({ summary: 'Import lịch sử di chuyển kho từ file Excel' })
+  @Post('Import/Excel')
   @ResponseMessage(SUCCESS)
   async importStockMovementsFromExcel(@Body() body: { buffer: Buffer }) {
     return this.stockMovementService.importStockMovementsFromExcel(body.buffer);

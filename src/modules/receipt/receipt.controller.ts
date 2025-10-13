@@ -28,9 +28,23 @@ import {
 } from './helpers/receipt.excel';
 import { ReceiptService } from './receipt.service';
 
-@ApiTags('Receipts')
-@Controller('Receipts')
+@ApiTags('Receipt')
+@Controller('Receipt')
 export class ReceiptController {
+  @Post('InsertMany')
+  @ResponseMessage(SUCCESS)
+  @ApiBody({
+    schema: {
+      type: 'array',
+      items: {
+        type: 'array',
+        items: { type: 'string' },
+      },
+    },
+  })
+  async insertMany(@Body() items: any[][]) {
+    return this.receiptService.insertMany(items);
+  }
   constructor(private readonly receiptService: ReceiptService) {}
 
   @Post('Create')

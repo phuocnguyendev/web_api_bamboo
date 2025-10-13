@@ -17,6 +17,69 @@ import { StockOutVoucherValidator } from './validators/stock-out-voucher.validat
 
 @Injectable()
 export class StockOutVoucherService {
+  /**
+   * Batch insert stock out vouchers from array of arrays (rows), similar to Receipt/Product insertMany
+   * @param items Array of rows, each row is an array of voucher fields
+   */
+  async insertMany(items: any[][]) {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new BadRequestException('Danh sách phiếu xuất trống');
+    }
+    const validRows: CreateStockOutVoucherDto[] = [];
+    const invalidRows: any[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const row = items[i];
+      const dto: any = {
+        Code: row[0],
+        WarehouseId: row[1],
+        WarehouseToId: row[2],
+        Type: row[3],
+        Reason: row[4],
+        IssuedAt: row[5],
+        Status: row[6],
+        Items: row[7] || [], // Items should be an array of CreateStockOutItemDto
+      };
+      // Validate using validator
+      let errorList: string[] = [];
+      const instance = Object.assign(
+        new (require('./dto/create-stock-out-voucher.dto').CreateStockOutVoucherDto)(),
+        dto,
+      );
+      const { validateSync } = require('class-validator');
+      const validationErrors = validateSync(instance, { whitelist: true });
+      if (validationErrors.length > 0) {
+        errorList = validationErrors.map((e: any) =>
+          Object.values(e.constraints || {}).join(', '),
+        );
+      }
+      // TODO: Add unique code check if needed
+      if (errorList.length > 0) {
+        // Map error to errorCells (column indices)
+        const errorCells: number[] = [];
+        const errorMsgs: string[] = errorList;
+        for (let j = 0; j < row.length; j++) errorCells.push(j);
+        invalidRows.push({
+          RowIndex: i,
+          ErrorMessage: errorMsgs.join(', '),
+          ErrorCells: errorCells,
+          CellValues: row,
+        });
+      } else {
+        validRows.push(dto);
+      }
+    }
+    let inserted = 0;
+    if (validRows.length > 0) {
+      for (const dto of validRows) {
+        await this.create(dto);
+      }
+      inserted = validRows.length;
+    }
+    return {
+      InsertedCount: inserted,
+      InvalidStockOutVouchers: invalidRows,
+    };
+  }
   constructor(
     private readonly stockOutVoucherRepository: StockOutVoucherRepository,
     private readonly stockOutVoucherValidator: StockOutVoucherValidator,
@@ -132,26 +195,40 @@ export class StockOutVoucherService {
     if (!importDtos.length) {
       throw new BadRequestException('No data found in import file');
     }
-    const {
-      valid,
-      invalid,
-    }: { valid: CreateStockOutVoucherDto[]; invalid: any[] } =
-      await this.stockOutVoucherValidator.validateImportBatch(importDtos[0]);
-    if (invalid.length > 0) {
-      const invalidBuffer =
-        StockOutVoucherExcelHelper.exportInvalidExcel(invalid);
+    // Flatten: assume importDtos is an array of ImportStockOutVoucherDto, each with vouchers: CreateStockOutVoucherDto[]
+    const rows: any[][] = [];
+    for (const importDto of importDtos) {
+      if (Array.isArray(importDto.vouchers)) {
+        for (const v of importDto.vouchers) {
+          rows.push([
+            v.Code,
+            v.WarehouseId,
+            v.WarehouseToId,
+            v.Type,
+            v.Reason,
+            v.IssuedAt,
+            v.Status,
+            v.Items || [],
+          ]);
+        }
+      }
+    }
+    const result = await this.insertMany(rows);
+    if (
+      result.InvalidStockOutVouchers &&
+      result.InvalidStockOutVouchers.length > 0
+    ) {
+      const invalidBuffer = StockOutVoucherExcelHelper.exportInvalidExcel(
+        result.InvalidStockOutVouchers,
+      );
       throw new BadRequestException({
         message: 'Dữ liệu import không hợp lệ',
         errorFile: 'InvalidStockOutVoucher.xlsx',
-        errors: invalid,
+        errors: result.InvalidStockOutVouchers,
         fileBuffer: invalidBuffer,
       });
     }
-    const results: any[] = [];
-    for (const dto of valid) {
-      results.push(await this.create(dto));
-    }
-    return { imported: results.length };
+    return { imported: result.InsertedCount };
   }
 
   async exportExcel(dto: ExportStockOutVoucherDto): Promise<Buffer> {
