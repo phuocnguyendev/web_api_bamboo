@@ -48,7 +48,7 @@ export class AuthService {
   private createAccessToken(user: AuthUser): string {
     const payload: JwtPayload = {
       sub: user.Id,
-      role: user.Role?.Name,
+      role: user.Role?.Code,
       iss: 'bamboo_hat_ms',
     };
     return this.jwtService.sign(payload, {
@@ -60,7 +60,7 @@ export class AuthService {
   private createRefreshToken(user: AuthUser): string {
     const payload: JwtPayload = {
       sub: user.Id,
-      role: user.Role?.Name,
+      role: user.Role?.Code,
       iss: 'bamboo_hat_ms',
     };
     return this.jwtService.sign(payload, {

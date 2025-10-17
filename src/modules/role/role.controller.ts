@@ -52,4 +52,10 @@ export class RoleController {
   async remove(@Param('id') Id: string) {
     return this.rolesService.remove(Id);
   }
+  @Get('GetOptions')
+  @ResponseMessage(SUCCESS)
+  async getOptions(): Promise<{ label: string; value: string }[]> {
+    const roles: RoleResponse[] = await this.rolesService.findAll();
+    return roles.map((role) => ({ label: role.Name, value: role.Id }));
+  }
 }
