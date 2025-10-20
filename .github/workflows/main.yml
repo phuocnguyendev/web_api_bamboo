@@ -6,13 +6,28 @@ on:
 
 jobs:
   delete_branch:
+    # Chỉ chạy khi PR đã merged
+    if: ${{ github.event.pull_request.merged }}
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    permissions:
+      contents: write # cần để xoá ref
 
-      - name: Delete branch after merge
-        if: github.event.pull_request.merged == true
+    steps:
+      - name: Skip if PR is from a fork
+        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
-          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
-          git push origin --delete "$BRANCH_NAME"
+          echo "PR đến từ fork (${{
+            github.event.pull_request.head.repo.full_name
+          }}), bỏ qua xoá branch."
+
+      - name: Delete head branch (same repo)
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "Deleting branch: $BRANCH"
+
+          # Dùng git push --delete với GITHUB_TOKEN
+          git init -q
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          # Thử xoá, nếu không tồn tại/đã xoá thì không fail
+          git push origin --delete "$BRANCH" || echo "Branch not found or already deleted."
