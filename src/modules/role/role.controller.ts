@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Headers,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SUCCESS } from 'src/constants/message.constant';
@@ -24,8 +25,11 @@ export class RoleController {
   @Post('Create')
   @Public()
   @ResponseMessage(SUCCESS)
-  async create(@Body() createRoleDto: CreateRoleDto): Promise<RoleResponse> {
-    return this.rolesService.create(createRoleDto);
+  async create(
+    @Body() createRoleDto: CreateRoleDto,
+    @Headers('x-updated-by') updatedBy?: string,
+  ): Promise<RoleResponse> {
+    return this.rolesService.create(createRoleDto, updatedBy || 'system');
   }
 
   @Get('GetAll')
@@ -43,14 +47,20 @@ export class RoleController {
 
   @Put('Update')
   @ResponseMessage(SUCCESS)
-  async update(@Body() updateRoleDto: UpdateRoleDto): Promise<RoleResponse> {
-    return this.rolesService.update(updateRoleDto);
+  async update(
+    @Body() updateRoleDto: UpdateRoleDto,
+    @Headers('x-updated-by') updatedBy?: string,
+  ): Promise<RoleResponse> {
+    return this.rolesService.update(updateRoleDto, updatedBy || 'system');
   }
 
   @Delete('Delete/:id')
   @ResponseMessage(SUCCESS)
-  async remove(@Param('id') Id: string) {
-    return this.rolesService.remove(Id);
+  async remove(
+    @Param('id') Id: string,
+    @Headers('x-updated-by') updatedBy?: string,
+  ) {
+    return this.rolesService.remove(Id, updatedBy || 'system');
   }
   @Get('GetOptions')
   @ResponseMessage(SUCCESS)

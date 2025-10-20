@@ -14,14 +14,17 @@ export class RoleService {
     private readonly elasticsearchService: ElasticsearchService,
   ) {}
 
-  async create(createRoleDto: CreateRoleDto): Promise<RoleResponse> {
+  async create(
+    createRoleDto: CreateRoleDto,
+    updatedBy: string = 'system',
+  ): Promise<RoleResponse> {
     await this.roleValidator.validateRoleName('Code', createRoleDto.Code);
-
     const role = await this.roleRepository.createRole({
       Name: createRoleDto.Name,
       Code: createRoleDto.Code,
+      LastUpdatedBy: updatedBy,
+      LastUpdatedAt: new Date(),
     });
-
     return role;
   }
 
@@ -32,27 +35,29 @@ export class RoleService {
   async findOne(id: string): Promise<RoleResponse> {
     return this.roleValidator.ensureRoleExists(id);
   }
-
-  async update(updateRoleDto: UpdateRoleDto): Promise<RoleResponse> {
+  async update(
+    updateRoleDto: UpdateRoleDto,
+    updatedBy: string = 'system',
+  ): Promise<RoleResponse> {
     const { Id, Name, Code } = updateRoleDto;
-
     if (!Code) {
       throw new Error('Code là bắt buộc');
     }
-
     if (!Name) {
       throw new Error('Name là bắt buộc');
     }
-
     await this.roleValidator.ensureRoleExists(Id);
     await this.roleValidator.validateRoleName('Code', Code);
-
-    const role = await this.roleRepository.updateRole(Id, { Name, Code });
-
+    const role = await this.roleRepository.updateRole(Id, {
+      Name,
+      Code,
+      LastUpdatedBy: updatedBy,
+      LastUpdatedAt: new Date(),
+    });
     return role;
   }
 
-  async remove(id: string) {
+  async remove(id: string, updatedBy: string = 'system') {
     await this.roleValidator.ensureRoleExists(id);
     await this.roleRepository.deleteRole(id);
     return {};

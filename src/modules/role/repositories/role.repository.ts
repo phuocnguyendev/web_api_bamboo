@@ -7,6 +7,8 @@ export const queryRole = {
   Id: true,
   Name: true,
   Code: true,
+  LastUpdatedBy: true,
+  LastUpdatedAt: true,
 };
 
 @Injectable()
@@ -36,7 +38,12 @@ export class RoleRepository extends BaseRepository<RoleData, any> {
     });
   }
 
-  async createRole(data: { Name: string; Code: string }): Promise<RoleData> {
+  async createRole(data: {
+    Name: string;
+    Code: string;
+    LastUpdatedBy?: string;
+    LastUpdatedAt?: Date;
+  }): Promise<RoleData> {
     return this.model.create({
       data,
       select: queryRole,
@@ -45,7 +52,12 @@ export class RoleRepository extends BaseRepository<RoleData, any> {
 
   async updateRole(
     Id: string,
-    data: { Name: string; Code: string },
+    data: {
+      Name: string;
+      Code: string;
+      LastUpdatedBy?: string;
+      LastUpdatedAt?: Date;
+    },
   ): Promise<RoleData> {
     return this.model.update({
       where: { Id },

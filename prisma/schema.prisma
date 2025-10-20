@@ -32,6 +32,8 @@ model Role {
   Name            String
   Users           User[]
   RolePermissions RolePermission[]
+  LastUpdatedBy   String?
+  LastUpdatedAt   DateTime? @updatedAt
 }
 
 model Permission {
@@ -39,6 +41,8 @@ model Permission {
   Code            String           @unique
   Name            String
   RolePermissions RolePermission[]
+  LastUpdatedBy   String?
+  LastUpdatedAt   DateTime? @updatedAt
 }
 
 model RolePermission {
