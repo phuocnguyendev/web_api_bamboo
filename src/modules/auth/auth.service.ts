@@ -3,10 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from 'src/config/prisma/prisma.service';
+import { queryRole } from '../role/repositories';
 import { AuthResponseDto } from './dto/authResponse.dto';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { AuthUser, JwtPayload } from './interfaces/auth.interface';
-import { queryRole } from '../role/repositories';
 
 @Injectable()
 export class AuthService {
@@ -86,6 +86,13 @@ export class AuthService {
       throw new HttpException('Người dùng không tồn tại', HttpStatus.NOT_FOUND);
     }
 
+    if (user.Status === false) {
+      throw new HttpException(
+        'Tài khoản của bạn đã ngừng hoạt động, vui lòng liên hệ với quản trị viên',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     if (!user.Password || !(await bcrypt.compare(Password, user.Password))) {
       throw new HttpException('Mật khẩu không đúng', HttpStatus.UNAUTHORIZED);
     }
@@ -112,6 +119,13 @@ export class AuthService {
         );
       }
 
+      if (user.Status === false) {
+        throw new HttpException(
+          'Tài khoản của bạn đã ngừng hoạt động, vui lòng liên hệ với quản trị viên',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
       const authUser = this.mapToAuthUser(user);
       return this.createTokens(authUser);
     } catch {
@@ -132,6 +146,13 @@ export class AuthService {
         select: this.AUTH_USER_SELECT,
       });
       if (!user || !user.Password) return null;
+
+      if (user.Status === false) {
+        throw new HttpException(
+          'Tài khoản của bạn đã ngừng hoạt động, vui lòng liên hệ với quản trị viên',
+          HttpStatus.FORBIDDEN,
+        );
+      }
 
       const ok = await bcrypt.compare(password, user.Password);
       if (!ok) return null;
