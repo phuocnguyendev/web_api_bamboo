@@ -88,6 +88,7 @@ export class ProductRepository extends BaseRepository<Product, any> {
           OR: [
             { Name: { contains: searchText, mode: 'insensitive' } },
             { Material: { contains: searchText, mode: 'insensitive' } },
+            { Code: { contains: searchText, mode: 'insensitive' } },
           ],
         }
       : undefined;

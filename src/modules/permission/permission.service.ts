@@ -26,8 +26,12 @@ export class PermissionService {
     return permission;
   }
 
-  async findAll(): Promise<IPermissionResponse> {
-    return this.permissionRepository.findAll();
+  async findAll(
+    page: number = 1,
+    pageSize: number = 20,
+    searchText: string = '',
+  ): Promise<IPermissionResponse> {
+    return this.permissionRepository.findAll(page, pageSize, searchText);
   }
 
   async findByRoleId(roleId: string): Promise<PermissionResponse[]> {

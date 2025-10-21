@@ -18,10 +18,13 @@ export class RoleService {
     createRoleDto: CreateRoleDto,
     updatedBy: string = 'system',
   ): Promise<RoleResponse> {
-    await this.roleValidator.validateRoleName('Code', createRoleDto.Code);
+    const codeUpper = createRoleDto.Code
+      ? createRoleDto.Code.toUpperCase()
+      : '';
+    await this.roleValidator.validateRoleName('Code', codeUpper);
     const role = await this.roleRepository.createRole({
       Name: createRoleDto.Name,
-      Code: createRoleDto.Code,
+      Code: codeUpper,
       LastUpdatedBy: updatedBy,
       LastUpdatedAt: new Date(),
     });
@@ -47,10 +50,11 @@ export class RoleService {
       throw new Error('Name là bắt buộc');
     }
     await this.roleValidator.ensureRoleExists(Id);
-    await this.roleValidator.validateRoleName('Code', Code);
+    const codeUpper = Code ? Code.toUpperCase() : '';
+    await this.roleValidator.validateRoleName('Code', codeUpper, Id);
     const role = await this.roleRepository.updateRole(Id, {
       Name,
-      Code,
+      Code: codeUpper,
       LastUpdatedBy: updatedBy,
       LastUpdatedAt: new Date(),
     });

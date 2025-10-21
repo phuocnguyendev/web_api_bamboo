@@ -33,7 +33,7 @@ export class RoleRepository extends BaseRepository<RoleData, any> {
 
   async findAllRoles(): Promise<RoleResponse[]> {
     return this.model.findMany({
-      orderBy: { Id: 'asc' },
+      orderBy: { LastUpdatedAt: 'desc' },
       select: queryRole,
     });
   }

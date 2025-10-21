@@ -33,18 +33,31 @@ export class PermissionRepository {
     });
   }
   async findById(permission_id: string): Promise<PermissionResponse | null> {
+    if (!permission_id) return null;
     return this.prisma.permission.findUnique({
       where: { Id: permission_id },
     }) as Promise<PermissionResponse | null>;
   }
 
-  async findAll(): Promise<IPermissionResponse> {
+  async findAll(
+    page: number = 1,
+    pageSize: number = 20,
+    searchText: string = '',
+  ): Promise<IPermissionResponse> {
+    const where: any = {};
+    if (searchText) {
+      where.OR = [
+        { Name: { contains: searchText, mode: 'insensitive' } },
+        { Code: { contains: searchText, mode: 'insensitive' } },
+      ];
+    }
     const data = await this.prisma.permission.findMany({
-      orderBy: {
-        Name: 'asc',
-      },
+      where,
+      orderBy: [{ LastUpdatedAt: 'desc' }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
-    const count = await this.prisma.permission.count();
+    const count = await this.prisma.permission.count({ where });
     return new BaseResponse(data, count);
   }
 

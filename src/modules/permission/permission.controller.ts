@@ -8,8 +8,16 @@ import {
   Post,
   UseGuards,
   ParseUUIDPipe,
+  Query,
+  Put,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+  ApiBody,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreatePermissionDto, UpdatePermissionDto } from './dto';
 import { PermissionService } from './permission.service';
@@ -38,8 +46,31 @@ export class PermissionController {
 
   @Get('GetAll')
   @ResponseMessage(SUCCESS)
-  async findAll(): Promise<BaseResponse<PermissionData>> {
-    return this.permissionService.findAll();
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'searchText',
+    required: false,
+    type: String,
+  })
+  async findAll(
+    @Query('page') page: number = 1,
+    @Query('pageSize') pageSize: number = 20,
+    @Query('searchText') searchText: string = '',
+  ): Promise<BaseResponse<PermissionData>> {
+    return this.permissionService.findAll(
+      Number(page),
+      Number(pageSize),
+      searchText,
+    );
   }
 
   @Get('GetById/:id')
@@ -50,13 +81,16 @@ export class PermissionController {
     return this.permissionService.findById(id);
   }
 
-  @Patch('Update/:id')
+  @Put('Update')
   @ResponseMessage(SUCCESS)
+  @ApiBody({ type: UpdatePermissionDto })
   async update(
-    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updatePermissionDto: UpdatePermissionDto,
   ): Promise<PermissionResponse> {
-    return this.permissionService.update(id, updatePermissionDto);
+    return this.permissionService.update(
+      updatePermissionDto.Id,
+      updatePermissionDto,
+    );
   }
 
   @Delete('Delete/:id')
