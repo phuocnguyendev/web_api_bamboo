@@ -24,7 +24,22 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalInterceptors(new TransformInterceptor(reflector));
   app.useGlobalGuards(new JwtAuthGuard(reflector));
-
+  app.enableCors({
+    origin: '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'Access-Control-Allow-Origin',
+      'Access-Control-Allow-Credentials',
+    ],
+    exposedHeaders: ['Content-Disposition', 'X-Suggested-Filename'],
+    optionsSuccessStatus: 204,
+  });
   // config api version
   app.enableVersioning({
     type: VersioningType.URI,
