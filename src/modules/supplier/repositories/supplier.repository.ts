@@ -58,8 +58,10 @@ export class SupplierRepository extends BaseRepository<Supplier, any> {
     const skip = (page - 1) * pageSize;
     const where = searchText
       ? {
-          Name: { contains: searchText, mode: 'insensitive' },
-          Code: { contains: searchText, mode: 'insensitive' },
+          OR: [
+            { Name: { contains: searchText, mode: 'insensitive' } },
+            { TaxCode: { contains: searchText, mode: 'insensitive' } },
+          ],
         }
       : undefined;
     const [data, count] = await Promise.all([
